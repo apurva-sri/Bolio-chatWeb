@@ -2,34 +2,27 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-const Register = () => {
-  const { register } = useAuth();
+const Login = () => {
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const submitHandler = async (e) => {
     e.preventDefault();
     try {
-      await register(username, email, password);
+      await login(email, password);
       navigate("/chat");
     } catch (err) {
-      alert(err.response?.data?.message || "Register failed");
+      alert(err.response?.data?.message || "Login failed");
     }
   };
 
   return (
     <div className="h-screen flex items-center justify-center">
       <form onSubmit={submitHandler} className="p-6 border rounded w-80">
-        <h2 className="text-xl mb-4">Register</h2>
-        <input
-          placeholder="Username"
-          className="border p-2 w-full mb-3"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+        <h2 className="text-xl mb-4">Login</h2>
         <input
           placeholder="Email"
           className="border p-2 w-full mb-3"
@@ -43,10 +36,10 @@ const Register = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <button className="bg-black text-white w-full p-2">Register</button>
+        <button className="bg-black text-white w-full p-2">Login</button>
       </form>
     </div>
   );
 };
 
-export default Register;
+export default Login;
