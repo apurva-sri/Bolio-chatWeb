@@ -1,0 +1,85 @@
+const Chat = require("../models/Chat");
+const User = require("../models/User");
+
+// @desc    Access or create 1-1 chat
+// @route   POST /api/chat
+// @access  Private
+const accessChat = async (req, res) => {
+  console.log("REQ BODY 👉", req.body);
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ message: "UserId is required" });
+  }
+
+  // Check if chat already exists
+  let chat = await Chat.findOne({
+    isGroupChat: false,
+    users: { $all: [req.user._id, userId] },
+  })
+    .populate("users", "-password")
+    .populate("lastMessage");
+
+  if (chat) return res.status(200).json(chat);
+
+  // Create new chat
+  const newChat = await Chat.create({
+    chatName: "sender",
+    isGroupChat: false,
+    users: [req.user._id, userId],
+  });
+
+  const fullChat = await Chat.findById(newChat._id).populate(
+    "users",
+    "-password"
+  );
+
+  res.status(201).json(fullChat);
+};
+
+// @desc    Fetch all chats of logged-in user
+// @route   GET /api/chat
+// @access  Private
+const fetchChats = async (req, res) => {
+  const chats = await Chat.find({
+    users: { $in: [req.user._id] },
+  })
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password")
+    .populate("lastMessage")
+    .sort({ updatedAt: -1 });
+
+  res.status(200).json(chats);
+};
+
+// @desc    Create group chat
+// @route   POST /api/chat/group
+// @access  Private
+const createGroupChat = async (req, res) => {
+  const { users, name } = req.body;
+
+  if (!users || !name) {
+    return res.status(400).json({
+      message: "Users and group name are required",
+    });
+  }
+
+  const groupChat = await Chat.create({
+    chatName: name,
+    users: [...users, req.user._id],
+    isGroupChat: true,
+    groupAdmin: req.user._id,
+  });
+
+  const fullGroupChat = await Chat.findById(groupChat._id)
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password");
+
+  res.status(201).json(fullGroupChat);
+};
+
+module.exports = {
+  accessChat,
+  fetchChats,
+  createGroupChat,
+};
