@@ -5,7 +5,7 @@ const User = require("../models/User");
 // @route   POST /api/chat
 // @access  Private
 const accessChat = async (req, res) => {
-  console.log("REQ BODY 👉", req.body);
+  console.log("REQ BODY:", req.body);
   const { userId } = req.body;
 
   if (!userId) {
