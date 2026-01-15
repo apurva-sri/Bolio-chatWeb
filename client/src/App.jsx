@@ -4,17 +4,14 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
-
-const Chat = () => <h1 className="text-2xl p-4">Chat Page (Protected)</h1>;
+import Chat from "./pages/Chat";
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Default route */}
           <Route path="/" element={<Navigate to="/login" />} />
-
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
