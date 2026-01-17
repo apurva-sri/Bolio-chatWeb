@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import API from "../utils/api";
 import Message from "./Message";
 import { io } from "socket.io-client";
+import { useAuth } from "../context/AuthContext";
 
 const socket = io("http://localhost:5000");
 
 const ChatBox = ({ chat }) => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+const bottomRef = useRef(null);
 
   useEffect(() => {
     if (!chat) return;
@@ -22,10 +25,24 @@ const ChatBox = ({ chat }) => {
   }, [chat]);
 
   useEffect(() => {
-    socket.on("message-received", (message) => {
+    const handleMessage = (message) => {
+      // ❌ sender ka message dobara mat add karo
+      if (message.sender._id === user._id) return;
+
       setMessages((prev) => [...prev, message]);
-    });
-  }, []);
+    };
+
+    socket.on("message-received", handleMessage);
+
+    return () => {
+      socket.off("message-received", handleMessage);
+    };
+  }, [user._id]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -35,8 +52,10 @@ const ChatBox = ({ chat }) => {
       chatId: chat._id,
     });
 
+    setMessages((prev) => [...prev, data]); //UI me manually add kar rahi
+    // Sender = REST se UI update
+    // Receiver = socket se UI update
     socket.emit("new-message", data);
-    setMessages((prev) => [...prev, data]);
     setNewMessage("");
   };
 
@@ -53,6 +72,7 @@ const ChatBox = ({ chat }) => {
         {messages.map((msg) => (
           <Message key={msg._id} message={msg} />
         ))}
+        <div ref={bottomRef} />
       </div>
 
       <div className="p-3 flex border-t">
