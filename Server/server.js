@@ -37,6 +37,15 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("❌ Socket disconnected:", socket.id);
   });
+
+  socket.on("typing", (chatId) => {
+    socket.to(chatId).emit("typing");
+  });
+
+  socket.on("stop-typing", (chatId) => {
+    socket.to(chatId).emit("stop-typing");
+  });
+
 });
 
 // listen on server, not app

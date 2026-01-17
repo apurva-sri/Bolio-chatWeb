@@ -10,6 +10,7 @@ const ChatBox = ({ chat }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
 const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -43,7 +44,6 @@ const bottomRef = useRef(null);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
@@ -58,6 +58,29 @@ const bottomRef = useRef(null);
     socket.emit("new-message", data);
     setNewMessage("");
   };
+
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+
+    socket.emit("typing", chat._id);
+
+    if (typingTimeout) clearTimeout(typingTimeout);
+
+    typingTimeout = setTimeout(() => {
+      socket.emit("stop-typing", chat._id);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    socket.on("typing", () => setIsTyping(true));
+    socket.on("stop-typing", () => setIsTyping(false));
+
+    return () => {
+      socket.off("typing");
+      socket.off("stop-typing");
+    };
+  }, []);
+
 
   if (!chat)
     return (
@@ -75,10 +98,12 @@ const bottomRef = useRef(null);
         <div ref={bottomRef} />
       </div>
 
+      {isTyping && <p className="text-sm text-gray-500 px-5">typing...</p>}
+
       <div className="p-3 flex border-t">
         <input
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={handleTyping}
           className="flex-1 border rounded px-3"
           placeholder="Type a message..."
         />
