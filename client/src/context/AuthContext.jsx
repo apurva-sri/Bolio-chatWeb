@@ -7,6 +7,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+const [onlineUsers, setOnlineUsers] = useState([]);
 
   // Load user on refresh
   useEffect(() => {
@@ -42,7 +43,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    //Exposeing
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        register,
+        logout,
+        loading,
+        onlineUsers,
+        setOnlineUsers,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
