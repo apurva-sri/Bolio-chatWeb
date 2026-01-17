@@ -8,28 +8,40 @@ const socket = io("http://localhost:5000");
 
 const ChatBox = ({ chat }) => {
   const { user } = useAuth();
+
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-const bottomRef = useRef(null);
 
+  const bottomRef = useRef(null);
+  const typingTimeoutRef = useRef(null); // 🔥 FIX
+
+  /* =========================
+     FETCH MESSAGES + JOIN CHAT
+     (WITH CLEANUP)  <-- 3.6.3
+     ========================= */
   useEffect(() => {
     if (!chat) return;
 
     const fetchMessages = async () => {
       const { data } = await API.get(`/message/${chat._id}`);
       setMessages(data);
-      socket.emit("join-chat", chat._id);
     };
 
     fetchMessages();
+    socket.emit("join-chat", chat._id);
+
+    return () => {
+      socket.emit("leave-chat", chat._id);
+    };
   }, [chat]);
 
+  /* =========================
+     RECEIVE NEW MESSAGES
+     ========================= */
   useEffect(() => {
     const handleMessage = (message) => {
-      // ❌ sender ka message dobara mat add karo
       if (message.sender._id === user._id) return;
-
       setMessages((prev) => [...prev, message]);
     };
 
@@ -40,37 +52,16 @@ const bottomRef = useRef(null);
     };
   }, [user._id]);
 
+  /* =========================
+     AUTO SCROLL
+     ========================= */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!newMessage.trim()) return;
-
-    const { data } = await API.post("/message", {
-      content: newMessage,
-      chatId: chat._id,
-    });
-
-    setMessages((prev) => [...prev, data]); //UI me manually add kar rahi
-    // Sender = REST se UI update
-    // Receiver = socket se UI update
-    socket.emit("new-message", data);
-    setNewMessage("");
-  };
-
-  const handleTyping = (e) => {
-    setNewMessage(e.target.value);
-
-    socket.emit("typing", chat._id);
-
-    if (typingTimeout) clearTimeout(typingTimeout);
-
-    typingTimeout = setTimeout(() => {
-      socket.emit("stop-typing", chat._id);
-    }, 2000);
-  };
-
+  /* =========================
+     TYPING INDICATOR (FIXED)
+     ========================= */
   useEffect(() => {
     socket.on("typing", () => setIsTyping(true));
     socket.on("stop-typing", () => setIsTyping(false));
@@ -81,13 +72,45 @@ const bottomRef = useRef(null);
     };
   }, []);
 
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
 
-  if (!chat)
+    socket.emit("typing", chat._id);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stop-typing", chat._id);
+    }, 1500);
+  };
+
+  /* =========================
+     SEND MESSAGE
+     ========================= */
+  const sendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    const { data } = await API.post("/message", {
+      content: newMessage,
+      chatId: chat._id,
+    });
+
+    setMessages((prev) => [...prev, data]); // sender optimistic UI
+    socket.emit("new-message", data);
+    socket.emit("stop-typing", chat._id);
+
+    setNewMessage("");
+  };
+
+  if (!chat) {
     return (
       <div className="w-2/3 flex items-center justify-center">
         Select a chat
       </div>
     );
+  }
 
   return (
     <div className="w-2/3 flex flex-col">
@@ -98,7 +121,7 @@ const bottomRef = useRef(null);
         <div ref={bottomRef} />
       </div>
 
-      {isTyping && <p className="text-sm text-gray-500 px-5">typing...</p>}
+      {isTyping && <p className="text-sm text-gray-500 px-4">typing...</p>}
 
       <div className="p-3 flex border-t">
         <input

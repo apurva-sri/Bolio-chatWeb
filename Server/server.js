@@ -46,6 +46,11 @@ io.on("connection", (socket) => {
     socket.to(chatId).emit("stop-typing");
   });
 
+  socket.on("leave-chat", (chatId) => {
+    //Old chat ke room se nikalna → memory leak & wrong messages fix
+    socket.leave(chatId);
+  });
+
 });
 
 // listen on server, not app
