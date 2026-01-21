@@ -43,4 +43,26 @@ const getMessages = async (req, res) => {
   res.status(200).json(messages);
 };
 
-module.exports = { sendMessage, getMessages };
+// @desc    Mark messages as read
+// @route   PUT /api/message/read/:chatId
+// @access  Private
+const markMessagesRead = async (req, res) => {
+  const chatId = req.params.chatId;
+  const userId = req.user._id;
+
+  
+  await Message.updateMany(
+    {
+      chat: chatId,
+      readBy: { $ne: userId },
+    },
+    {
+      $addToSet: { readBy: userId },
+    }
+  );
+
+  res.status(200).json({ success: true });
+};
+
+
+module.exports = { sendMessage, getMessages, markMessagesRead };

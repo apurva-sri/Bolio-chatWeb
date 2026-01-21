@@ -56,6 +56,10 @@ io.on("connection", (socket) => {
     socket.to(chatId).emit("stop-typing");
   });
 
+  socket.on("messages-read", ({ chatId, userId }) => {
+    socket.to(chatId).emit("messages-seen", { chatId, userId });
+  });
+
   socket.on("disconnect", () => {
     if (socket.userId) {
       onlineUsers.delete(socket.userId);

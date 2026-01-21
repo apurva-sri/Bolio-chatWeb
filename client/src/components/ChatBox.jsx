@@ -14,18 +14,21 @@ const ChatBox = ({ chat }) => {
   const [isTyping, setIsTyping] = useState(false);
 
   const bottomRef = useRef(null);
-  const typingTimeoutRef = useRef(null); // 🔥 FIX
+  const typingTimeoutRef = useRef(null);
 
-  /* =========================
-     FETCH MESSAGES + JOIN CHAT
-     (WITH CLEANUP)  <-- 3.6.3
-     ========================= */
   useEffect(() => {
     if (!chat) return;
 
     const fetchMessages = async () => {
       const { data } = await API.get(`/message/${chat._id}`);
       setMessages(data);
+
+      // mark messages as read
+      await API.put(`/message/read/${chat._id}`);
+      socket.emit("messages-read", {
+        chatId: chat._id,
+        userId: user._id,
+      });
     };
 
     fetchMessages();
@@ -111,6 +114,23 @@ const ChatBox = ({ chat }) => {
       </div>
     );
   }
+
+  /* =========================
+     mark messages as read
+     ========================= */
+  useEffect(() => {
+    socket.on("messages-seen", ({ userId }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.sender._id === user._id
+            ? { ...msg, readBy: [...msg.readBy, userId] }
+            : msg,
+        ),
+      );
+    });
+
+    return () => socket.off("messages-seen");
+  }, [user._id]);
 
   return (
     <div className="w-2/3 flex flex-col">
