@@ -16,6 +16,9 @@ const ChatBox = ({ chat }) => {
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  /* =========================
+     FETCH + JOIN CHAT
+     ========================= */
   useEffect(() => {
     if (!chat) return;
 
@@ -37,22 +40,51 @@ const ChatBox = ({ chat }) => {
     return () => {
       socket.emit("leave-chat", chat._id);
     };
-  }, [chat]);
+  }, [chat, user._id]);
 
   /* =========================
      RECEIVE NEW MESSAGES
      ========================= */
   useEffect(() => {
-    const handleMessage = (message) => {
-      if (message.sender._id === user._id) return;
+    const handleMessage = async (message) => {
+      if (!chat) return;
+      
       setMessages((prev) => [...prev, message]);
+
+      // receiver marks message as read immediately
+      await API.put(`/message/read/${chat._id}`);
+
+      socket.emit("messages-read", {
+        chatId: chat._id,
+        userId: user._id,
+      });
     };
 
     socket.on("message-received", handleMessage);
+    return () => socket.off("message-received", handleMessage);
+  }, [user._id]);
 
-    return () => {
-      socket.off("message-received", handleMessage);
+  /* =========================
+     MESSAGES SEEN (✓✓)
+     ========================= */
+  useEffect(() => {
+    const handleSeen = ({ userId }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.sender._id === user._id
+            ? {
+                ...msg,
+                readBy: msg.readBy.includes(userId)
+                  ? msg.readBy
+                  : [...msg.readBy, userId],
+              }
+            : msg,
+        ),
+      );
     };
+
+    socket.on("messages-seen", handleSeen);
+    return () => socket.off("messages-seen", handleSeen);
   }, [user._id]);
 
   /* =========================
@@ -63,7 +95,7 @@ const ChatBox = ({ chat }) => {
   }, [messages]);
 
   /* =========================
-     TYPING INDICATOR (FIXED)
+     TYPING INDICATOR
      ========================= */
   useEffect(() => {
     socket.on("typing", () => setIsTyping(true));
@@ -77,6 +109,7 @@ const ChatBox = ({ chat }) => {
 
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
+    if (!chat) return;
 
     socket.emit("typing", chat._id);
 
@@ -89,24 +122,23 @@ const ChatBox = ({ chat }) => {
     }, 1500);
   };
 
-  /* =========================
-     SEND MESSAGE
-     ========================= */
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !chat) return;
 
     const { data } = await API.post("/message", {
       content: newMessage,
       chatId: chat._id,
     });
 
-    setMessages((prev) => [...prev, data]); // sender optimistic UI
+    setMessages((prev) => [...prev, data]);
     socket.emit("new-message", data);
     socket.emit("stop-typing", chat._id);
-
     setNewMessage("");
   };
 
+  /* =========================
+     UI
+     ========================= */
   if (!chat) {
     return (
       <div className="w-2/3 flex items-center justify-center">
@@ -114,23 +146,6 @@ const ChatBox = ({ chat }) => {
       </div>
     );
   }
-
-  /* =========================
-     mark messages as read
-     ========================= */
-  useEffect(() => {
-    socket.on("messages-seen", ({ userId }) => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.sender._id === user._id
-            ? { ...msg, readBy: [...msg.readBy, userId] }
-            : msg,
-        ),
-      );
-    });
-
-    return () => socket.off("messages-seen");
-  }, [user._id]);
 
   return (
     <div className="w-2/3 flex flex-col">

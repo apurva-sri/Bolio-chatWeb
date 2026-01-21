@@ -50,7 +50,6 @@ const markMessagesRead = async (req, res) => {
   const chatId = req.params.chatId;
   const userId = req.user._id;
 
-  
   await Message.updateMany(
     {
       chat: chatId,

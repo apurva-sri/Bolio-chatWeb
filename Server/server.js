@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./src/config/db");
 const http = require("http");
 const { Server } = require("socket.io");
+const Message = require("./src/models/Message");
 
 dotenv.config();
 connectDB();
@@ -43,10 +44,16 @@ io.on("connection", (socket) => {
      socket.leave(chatId);
    });
 
-  socket.on("new-message", (message) => {
-    const chatId = message.chat._id;
-    socket.to(chatId).emit("message-received", message);
+  socket.on("new-message", async (message) => {
+    const chatId = message.chat._id; //handlemessage call hoga
+    // Server side: always populate sender before emit (Isse kabhi null sender nahi aayega)
+    const fullMessage = await Message.findById(message._id)
+      .populate("sender", "username avatar")
+      .populate("chat");
+
+    socket.to(chatId).emit("message-received", fullMessage);
   });
+
 
   socket.on("typing", (chatId) => {
     socket.to(chatId).emit("typing");
