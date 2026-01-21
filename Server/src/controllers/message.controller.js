@@ -16,6 +16,7 @@ const sendMessage = async (req, res) => {
     content,
     chat: chatId,
     type: type || "text",
+    deliveredTo: [],
     readBy: [req.user._id],
   });
 
@@ -63,5 +64,18 @@ const markMessagesRead = async (req, res) => {
   res.status(200).json({ success: true });
 };
 
+// @route PUT /api/message/delivered/:id
+const markDelivered = async (req, res) => {
+  const messageId = req.params.id;
+  const userId = req.user._id;
 
-module.exports = { sendMessage, getMessages, markMessagesRead };
+  await Message.findByIdAndUpdate(messageId, {
+    $addToSet: { deliveredTo: userId },
+  });
+
+  res.status(200).json({ success: true });
+};
+
+
+
+module.exports = { sendMessage, getMessages, markMessagesRead, markDelivered };

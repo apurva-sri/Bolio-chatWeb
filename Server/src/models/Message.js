@@ -25,6 +25,13 @@ const messageSchema = new mongoose.Schema(
       default: "text",
     },
 
+    deliveredTo: [
+      //Sender is NOT included in deliveredTo
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     readBy: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -32,7 +39,7 @@ const messageSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Message", messageSchema);

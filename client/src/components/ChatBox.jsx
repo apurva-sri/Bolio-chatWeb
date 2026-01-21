@@ -49,16 +49,15 @@ const ChatBox = ({ chat }) => {
     if (!chat) return;
 
     const handleMessage = async (message) => {
-      // 🔐 defensive guard
+      // defensive guard
       if (!message || !message._id) return;
 
       setMessages((prev) => [...prev, message]);
 
-      // 🔥 receiver already in chat → mark read instantly
-      await API.put(`/message/read/${chat._id}`);
-      socket.emit("messages-read", {
+      await API.put(`/message/delivered/${message._id}`);
+      socket.emit("message-delivered", {
         chatId: chat._id,
-        userId: user._id,
+        messageId: message._id,
       });
     };
 
@@ -89,6 +88,25 @@ const ChatBox = ({ chat }) => {
     socket.on("messages-seen", handleSeen);
     return () => socket.off("messages-seen", handleSeen);
   }, [user._id]);
+
+  /* =========================
+     Delivered socket listener
+     ========================= */
+
+  useEffect(() => {
+    const handleDelivered = ({ messageId }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId
+            ? { ...msg, deliveredTo: [...(msg.deliveredTo || []), "receiver"] }
+            : msg,
+        ),
+      );
+    };
+
+    socket.on("message-delivered", handleDelivered);
+    return () => socket.off("message-delivered", handleDelivered);
+  }, []);
 
   /* =========================
      AUTO SCROLL

@@ -13,7 +13,8 @@ const Message = ({ message }) => {
   });
 
   // sender + receiver = seen
-  const isSeen = message.readBy?.length > 1;
+  const isDelivered = message.deliveredTo?.length > 0;
+  const isRead = message.readBy?.length > 1;
 
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"} mb-2`}>
@@ -28,7 +29,11 @@ const Message = ({ message }) => {
         <div className="flex justify-end items-center gap-1 text-xs mt-1 opacity-70">
           <span>{time}</span>
 
-          {isMe && <span>{isSeen ? "✓✓" : "✓"}</span>}
+          {isMe && (
+            <span className={isRead ? "text-blue-500" : "text-gray-400"}>
+              {isDelivered ? "✓✓" : "✓"}
+            </span>
+          )}
         </div>
       </div>
     </div>
