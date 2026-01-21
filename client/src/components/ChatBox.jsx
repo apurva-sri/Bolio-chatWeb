@@ -46,14 +46,16 @@ const ChatBox = ({ chat }) => {
      RECEIVE NEW MESSAGES
      ========================= */
   useEffect(() => {
+    if (!chat) return;
+
     const handleMessage = async (message) => {
-      if (!chat) return;
-      
+      // 🔐 defensive guard
+      if (!message || !message._id) return;
+
       setMessages((prev) => [...prev, message]);
 
-      // receiver marks message as read immediately
+      // 🔥 receiver already in chat → mark read instantly
       await API.put(`/message/read/${chat._id}`);
-
       socket.emit("messages-read", {
         chatId: chat._id,
         userId: user._id,
@@ -62,7 +64,7 @@ const ChatBox = ({ chat }) => {
 
     socket.on("message-received", handleMessage);
     return () => socket.off("message-received", handleMessage);
-  }, [user._id]);
+  }, [chat, user._id]);
 
   /* =========================
      MESSAGES SEEN (✓✓)
@@ -70,16 +72,17 @@ const ChatBox = ({ chat }) => {
   useEffect(() => {
     const handleSeen = ({ userId }) => {
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.sender._id === user._id
-            ? {
-                ...msg,
-                readBy: msg.readBy.includes(userId)
-                  ? msg.readBy
-                  : [...msg.readBy, userId],
-              }
-            : msg,
-        ),
+        prev.map((msg) => {
+          if (!msg.readBy) msg.readBy = [];
+
+          // sender ke messages pe hi ✓✓ lagna chahiye
+          if (msg.sender && msg.sender._id === user._id) {
+            return msg.readBy.includes(userId)
+              ? msg
+              : { ...msg, readBy: [...msg.readBy, userId] };
+          }
+          return msg;
+        }),
       );
     };
 
@@ -129,7 +132,7 @@ const ChatBox = ({ chat }) => {
       content: newMessage,
       chatId: chat._id,
     });
-
+    // sender optimistic UI
     setMessages((prev) => [...prev, data]);
     socket.emit("new-message", data);
     socket.emit("stop-typing", chat._id);
