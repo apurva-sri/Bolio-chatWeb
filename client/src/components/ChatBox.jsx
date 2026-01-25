@@ -45,26 +45,34 @@ const ChatBox = ({ chat }) => {
   /* =========================
      RECEIVE NEW MESSAGES
      ========================= */
-  useEffect(() => {
-    if (!chat) return;
+useEffect(() => {
+  if (!chat) return;
 
-    const handleMessage = async (message) => {
-      // defensive guard
-      if (!message || !message._id) return;
+  const handleMessage = async (message) => {
+    if (!message || !message._id) return;
 
-      setMessages((prev) => [...prev, message]);
+    // 1️⃣ Add message to UI
+    setMessages((prev) => [...prev, message]);
 
-      await API.put(`/message/delivered/${message._id}`);
-      socket.emit("message-delivered", {
-        chatId: chat._id,
-        messageId: message._id,
-        userId: user._id,
-      });
-    };
+    // 2️⃣ MARK AS DELIVERED
+    await API.put(`/message/delivered/${message._id}`);
+    socket.emit("message-delivered", {
+      chatId: chat._id,
+      messageId: message._id,
+      userId: user._id,
+    });
 
-    socket.on("message-received", handleMessage);
-    return () => socket.off("message-received", handleMessage);
-  }, [chat, user._id]);
+    // 3️⃣ MARK AS READ (IMPORTANT FIX 🔥🔥🔥)
+    await API.put(`/message/read/${chat._id}`);
+    socket.emit("messages-read", {
+      chatId: chat._id,
+      userId: user._id,
+    });
+  };
+
+  socket.on("message-received", handleMessage);
+  return () => socket.off("message-received", handleMessage);
+}, [chat, user._id]);
 
   /* =========================
      MESSAGES SEEN (✓✓)
