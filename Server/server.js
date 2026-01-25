@@ -39,10 +39,10 @@ io.on("connection", (socket) => {
     console.log(`User joined chat: ${chatId}`);
   });
 
-   socket.on("leave-chat", (chatId) => {
-     //Old chat ke room se nikalna → memory leak & wrong messages fix
-     socket.leave(chatId);
-   });
+  socket.on("leave-chat", (chatId) => {
+    //Old chat ke room se nikalna → memory leak & wrong messages fix
+    socket.leave(chatId);
+  });
 
   socket.on("new-message", async (message) => {
     const chatId = message.chat._id; //handlemessage call hoga
@@ -53,7 +53,6 @@ io.on("connection", (socket) => {
 
     socket.to(chatId).emit("message-received", fullMessage);
   });
-
 
   socket.on("typing", (chatId) => {
     socket.to(chatId).emit("typing");

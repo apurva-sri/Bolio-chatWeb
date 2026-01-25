@@ -12,6 +12,12 @@ const Message = ({ message }) => {
     minute: "2-digit",
   });
 
+  const totalUsers = message.chat?.users?.length || 2;
+  const readCount = (message.readBy?.length || 1) - 1; // exclude sender
+
+  const isGroup = message.chat?.isGroupChat;
+  const allRead = readCount === totalUsers - 1;
+
   // sender + receiver = seen
   const isDelivered = message.deliveredTo?.length > 0;
   const isRead = message.readBy?.length > 1;
@@ -30,9 +36,16 @@ const Message = ({ message }) => {
           <span>{time}</span>
 
           {isMe && (
-            <span className={isRead ? "text-blue-500" : "text-gray-400"}>
-              {isDelivered ? "✓✓" : "✓"}
+            <span className={allRead ? "text-blue-500" : "text-gray-400"}>
+              {message.deliveredTo?.length > 0 ? "✓✓" : "✓"}
             </span>
+          )}
+
+          {/* Group read info */}
+          {isGroup && allRead && (
+            <p className="text-[10px] text-gray-500 mt-1">
+              Seen by {readCount} users
+            </p>
           )}
         </div>
       </div>
