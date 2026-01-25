@@ -52,9 +52,6 @@ io.on("connection", (socket) => {
       .populate("chat");
 
     socket.to(chatId).emit("message-received", fullMessage);
-    socket.to(chatId).emit("message-delivered", {
-      messageId: message._id,
-    });
   });
 
 
@@ -64,6 +61,13 @@ io.on("connection", (socket) => {
 
   socket.on("stop-typing", (chatId) => {
     socket.to(chatId).emit("stop-typing");
+  });
+
+  socket.on("message-delivered", ({ chatId, messageId, userId }) => {
+    socket.to(chatId).emit("message-delivered", {
+      messageId,
+      userId,
+    });
   });
 
   socket.on("messages-read", ({ chatId, userId }) => {

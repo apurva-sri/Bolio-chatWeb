@@ -58,6 +58,7 @@ const ChatBox = ({ chat }) => {
       socket.emit("message-delivered", {
         chatId: chat._id,
         messageId: message._id,
+        userId: user._id,
       });
     };
 
@@ -94,11 +95,16 @@ const ChatBox = ({ chat }) => {
      ========================= */
 
   useEffect(() => {
-    const handleDelivered = ({ messageId }) => {
+    const handleDelivered = ({ messageId, userId }) => {
       setMessages((prev) =>
         prev.map((msg) =>
           msg._id === messageId
-            ? { ...msg, deliveredTo: [...(msg.deliveredTo || []), "receiver"] }
+            ? {
+                ...msg,
+                deliveredTo: msg.deliveredTo?.includes(userId)
+                  ? msg.deliveredTo
+                  : [...(msg.deliveredTo || []), userId],
+              }
             : msg,
         ),
       );
@@ -107,6 +113,7 @@ const ChatBox = ({ chat }) => {
     socket.on("message-delivered", handleDelivered);
     return () => socket.off("message-delivered", handleDelivered);
   }, []);
+
 
   /* =========================
      AUTO SCROLL
