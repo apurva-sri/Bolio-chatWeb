@@ -77,26 +77,33 @@ useEffect(() => {
   /* =========================
      MESSAGES SEEN (✓✓)
      ========================= */
-  useEffect(() => {
-    const handleSeen = ({ userId }) => {
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (!msg.readBy) msg.readBy = [];
+useEffect(() => {
+  const handleSeen = ({ userId }) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        // only sender messages
+        if (msg.sender?._id !== user._id) return msg;
 
-          // sender ke messages pe hi ✓✓ lagna chahiye
-          if (msg.sender && msg.sender._id === user._id) {
-            return msg.readBy.includes(userId)
-              ? msg
-              : { ...msg, readBy: [...msg.readBy, userId] };
-          }
-          return msg;
-        }),
-      );
-    };
+        const deliveredTo = msg.deliveredTo || [];
+        const readBy = msg.readBy || [];
 
-    socket.on("messages-seen", handleSeen);
-    return () => socket.off("messages-seen", handleSeen);
-  }, [user._id]);
+        return {
+          ...msg,
+          // 🔥 READ implies DELIVERED
+          deliveredTo: deliveredTo.includes(userId)
+            ? deliveredTo
+            : [...deliveredTo, userId],
+
+          readBy: readBy.includes(userId) ? readBy : [...readBy, userId],
+        };
+      }),
+    );
+  };
+
+  socket.on("messages-seen", handleSeen);
+  return () => socket.off("messages-seen", handleSeen);
+}, [user._id]);
+
 
   /* =========================
      Delivered socket listener
