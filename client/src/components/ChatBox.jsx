@@ -15,6 +15,7 @@ const ChatBox = ({ chat }) => {
 
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const fileRef = useRef(null); // REQUIRED for file sending
 
   /* =========================
      FETCH + JOIN CHAT
@@ -26,7 +27,7 @@ const ChatBox = ({ chat }) => {
       const { data } = await API.get(`/message/${chat._id}`);
       setMessages(data);
 
-      // mark messages as read
+      // mark messages as read (chat open)
       await API.put(`/message/read/${chat._id}`);
       socket.emit("messages-read", {
         chatId: chat._id,
@@ -45,65 +46,64 @@ const ChatBox = ({ chat }) => {
   /* =========================
      RECEIVE NEW MESSAGES
      ========================= */
-useEffect(() => {
-  if (!chat) return;
+  useEffect(() => {
+    if (!chat) return;
 
-  const handleMessage = async (message) => {
-    if (!message || !message._id) return;
+    const handleMessage = async (message) => {
+      if (!message || !message._id) return;
 
-    // 1️⃣ Add message to UI
-    setMessages((prev) => [...prev, message]);
+      // 1️⃣ Add message to UI
+      setMessages((prev) => [...prev, message]);
 
-    // 2️⃣ MARK AS DELIVERED
-    await API.put(`/message/delivered/${message._id}`);
-    socket.emit("message-delivered", {
-      chatId: chat._id,
-      messageId: message._id,
-      userId: user._id,
-    });
+      // MARK AS DELIVERED
+      await API.put(`/message/delivered/${message._id}`);
+      socket.emit("message-delivered", {
+        chatId: chat._id,
+        messageId: message._id,
+        userId: user._id,
+      });
 
-    // 3️⃣ MARK AS READ (IMPORTANT FIX 🔥🔥🔥)
-    await API.put(`/message/read/${chat._id}`);
-    socket.emit("messages-read", {
-      chatId: chat._id,
-      userId: user._id,
-    });
-  };
+      // read (because chat is open)
+      await API.put(`/message/read/${chat._id}`);
+      socket.emit("messages-read", {
+        chatId: chat._id,
+        userId: user._id,
+      });
+    };
 
-  socket.on("message-received", handleMessage);
-  return () => socket.off("message-received", handleMessage);
-}, [chat, user._id]);
+    socket.on("message-received", handleMessage);
+    return () => socket.off("message-received", handleMessage);
+  }, [chat, user._id]);
 
   /* =========================
      MESSAGES SEEN (✓✓)
      ========================= */
-useEffect(() => {
-  const handleSeen = ({ userId }) => {
-    setMessages((prev) =>
-      prev.map((msg) => {
-        // only sender messages
-        if (msg.sender?._id !== user._id) return msg;
+  useEffect(() => {
+    const handleSeen = ({ userId }) => {
+      setMessages((prev) =>
+        prev.map((msg) => {
+          // only sender messages
+          if (msg.sender?._id !== user._id) return msg;
 
-        const deliveredTo = msg.deliveredTo || [];
-        const readBy = msg.readBy || [];
+          const deliveredTo = msg.deliveredTo || [];
+          const readBy = msg.readBy || [];
 
-        return {
-          ...msg,
-          // 🔥 READ implies DELIVERED
-          deliveredTo: deliveredTo.includes(userId)
-            ? deliveredTo
-            : [...deliveredTo, userId],
+          return {
+            ...msg,
+            // READ implies DELIVERED
+            deliveredTo: deliveredTo.includes(userId)
+              ? deliveredTo
+              : [...deliveredTo, userId],
 
-          readBy: readBy.includes(userId) ? readBy : [...readBy, userId],
-        };
-      }),
-    );
-  };
+            readBy: readBy.includes(userId) ? readBy : [...readBy, userId],
+          };
+        }),
+      );
+    };
 
-  socket.on("messages-seen", handleSeen);
-  return () => socket.off("messages-seen", handleSeen);
-}, [user._id]);
-
+    socket.on("messages-seen", handleSeen);
+    return () => socket.off("messages-seen", handleSeen);
+  }, [user._id]);
 
   /* =========================
      Delivered socket listener
@@ -129,7 +129,6 @@ useEffect(() => {
     return () => socket.off("message-delivered", handleDelivered);
   }, []);
 
-
   /* =========================
      AUTO SCROLL
      ========================= */
@@ -150,16 +149,26 @@ useEffect(() => {
     };
   }, []);
 
+  // const handleTyping = (e) => {
+  //   setNewMessage(e.target.value);
+  //   if (!chat) return;
+
+  //   socket.emit("typing", chat._id);
+
+  //   if (typingTimeoutRef.current) {
+  //     clearTimeout(typingTimeoutRef.current);
+  //   }
+
+  //   typingTimeoutRef.current = setTimeout(() => {
+  //     socket.emit("stop-typing", chat._id);
+  //   }, 1500);
+  // };
+
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
-    if (!chat) return;
-
     socket.emit("typing", chat._id);
 
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
+    clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       socket.emit("stop-typing", chat._id);
     }, 1500);
@@ -177,6 +186,25 @@ useEffect(() => {
     socket.emit("new-message", data);
     socket.emit("stop-typing", chat._id);
     setNewMessage("");
+  };
+
+  /* =========================
+     SEND FILE / IMAGE
+     ========================= */
+  const sendFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("chatId", chat._id);
+
+    const { data } = await API.post("/message", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    setMessages((prev) => [...prev, data]);
+    socket.emit("new-message", data);
   };
 
   /* =========================
@@ -201,19 +229,23 @@ useEffect(() => {
 
       {isTyping && <p className="text-sm text-gray-500 px-4">typing...</p>}
 
-      <div className="p-3 flex border-t">
+      <div className="p-3 flex border-t gap-2">
+        <button onClick={() => fileRef.current.click()}>📎</button>
+        <input type="file" hidden ref={fileRef} onChange={sendFile} />
+
         <input
           value={newMessage}
           onChange={handleTyping}
           className="flex-1 border rounded px-3"
           placeholder="Type a message..."
         />
-        <button onClick={sendMessage} className="ml-2 px-4 bg-black text-white">
+
+        <button onClick={sendMessage} className="px-4 bg-black text-white">
           Send
         </button>
       </div>
     </div>
   );
-};
+};;
 
 export default ChatBox;

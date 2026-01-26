@@ -7,8 +7,9 @@ const {
   markMessagesRead,
   markDelivered,
 } = require("../controllers/message.controller");
+const upload = require("../middleware/upload");
 
-router.post("/", protect, sendMessage);
+router.post("/", protect, upload.single("file"), sendMessage);
 router.get("/:chatId", protect, getMessages);
 router.put("/read/:chatId", protect, markMessagesRead);
 router.put("/delivered/:id", protect, markDelivered);

@@ -3,24 +3,19 @@ import { useAuth } from "../context/AuthContext";
 
 const Message = ({ message }) => {
   const { user } = useAuth();
-
   const isMe = message.sender._id === user._id;
 
-  // format time like 5:42 PM
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
 
   const totalUsers = message.chat?.users?.length || 2;
-  const readCount = (message.readBy?.length || 1) - 1; // exclude sender
-
+  const readCount = (message.readBy?.length || 1) - 1;
   const isGroup = message.chat?.isGroupChat;
   const allRead = readCount === totalUsers - 1;
 
-  // sender + receiver = seen
   const isDelivered = message.deliveredTo?.length > 0;
-  const isRead = message.readBy?.length > 1;
 
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"} mb-2`}>
@@ -29,25 +24,43 @@ const Message = ({ message }) => {
           isMe ? "bg-black text-white" : "bg-gray-200"
         }`}
       >
-        <p>{message.content}</p>
+        {/* TEXT */}
+        {message.type === "text" && <p>{message.content}</p>}
 
-        {/* time + ticks */}
+        {/* IMAGE */}
+        {message.type === "image" && (
+          <img
+            src={`http://localhost:5000${message.fileUrl}`}
+            className="max-w-xs rounded"
+          />
+        )}
+
+        {/* FILE */}
+        {message.type === "file" && (
+          <a
+            href={`http://localhost:5000${message.fileUrl}`}
+            target="_blank"
+            className="underline text-blue-600"
+          >
+            📎 {message.fileName}
+          </a>
+        )}
+
         <div className="flex justify-end items-center gap-1 text-xs mt-1 opacity-70">
           <span>{time}</span>
 
           {isMe && (
             <span className={allRead ? "text-blue-500" : "text-gray-400"}>
-              {message.deliveredTo?.length > 0 ? "✓✓" : "✓"}
+              {isDelivered ? "✓✓" : "✓"}
             </span>
           )}
-
-          {/* Group read info */}
-          {isGroup && allRead && (
-            <p className="text-[10px] text-gray-500 mt-1">
-              Seen by {readCount} users
-            </p>
-          )}
         </div>
+
+        {isGroup && allRead && (
+          <p className="text-[10px] text-gray-500 mt-1">
+            Seen by {readCount} users
+          </p>
+        )}
       </div>
     </div>
   );
