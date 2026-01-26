@@ -1,29 +1,46 @@
 const Message = require("../models/Message");
 const Chat = require("../models/Chat");
 
-// @desc    Send message
+// @desc    Send message (TEXT / IMAGE / FILE)
 // @route   POST /api/message
 // @access  Private
 const sendMessage = async (req, res) => {
-  const { content, chatId, type } = req.body;
+  const { content, chatId } = req.body;
 
-  if (!content || !chatId) {
-    return res.status(400).json({ message: "content & chatId required" });
+  if (!chatId) {
+    return res.status(400).json({ message: "chatId required" });
   }
 
-  let message = await Message.create({
+  let messageData = {
     sender: req.user._id,
-    content,
     chat: chatId,
-    type: type || "text",
     deliveredTo: [],
     readBy: [req.user._id],
-  });
+  };
+
+  // FILE / IMAGE MESSAGE
+  if (req.file) {
+    messageData.type = req.file.mimetype.startsWith("image")
+      ? "image"
+      : "file";
+
+    messageData.content = req.file.originalname;
+    messageData.fileUrl = `/uploads/${req.file.filename}`;
+  }
+  // TEXT MESSAGE
+  else {
+    if (!content) {
+      return res.status(400).json({ message: "content required" });
+    }
+    messageData.type = "text";
+    messageData.content = content;
+  }
+
+  let message = await Message.create(messageData);
 
   message = await message.populate("sender", "username avatar");
   message = await message.populate("chat");
 
-  // Update lastMessage in Chat
   await Chat.findByIdAndUpdate(chatId, {
     lastMessage: message._id,
   });

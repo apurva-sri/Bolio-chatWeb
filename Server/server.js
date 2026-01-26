@@ -15,8 +15,6 @@ const server = http.createServer(app);
 
 const onlineUsers = new Map(); // userId -> socketId
 
-app.use("/uploads", express.static("uploads"));
-
 // Attach Socket.IO
 const io = new Server(server, {
   cors: {
