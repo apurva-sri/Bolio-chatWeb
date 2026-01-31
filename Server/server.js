@@ -1,11 +1,11 @@
-const app = require("./src/app");
 const dotenv = require("dotenv");
+dotenv.config();
+
+const app = require("./src/app");
 const connectDB = require("./src/config/db");
 const http = require("http");
 const { Server } = require("socket.io");
 const Message = require("./src/models/Message");
-
-dotenv.config();
 connectDB();
 
 const PORT = process.env.PORT || 5000;

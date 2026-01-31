@@ -149,21 +149,6 @@ const ChatBox = ({ chat }) => {
     };
   }, []);
 
-  // const handleTyping = (e) => {
-  //   setNewMessage(e.target.value);
-  //   if (!chat) return;
-
-  //   socket.emit("typing", chat._id);
-
-  //   if (typingTimeoutRef.current) {
-  //     clearTimeout(typingTimeoutRef.current);
-  //   }
-
-  //   typingTimeoutRef.current = setTimeout(() => {
-  //     socket.emit("stop-typing", chat._id);
-  //   }, 1500);
-  // };
-
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
     socket.emit("typing", chat._id);

@@ -27,22 +27,38 @@ const Message = ({ message }) => {
         {/* TEXT */}
         {message.type === "text" && <p>{message.content}</p>}
 
-        {/* IMAGE */}
-        {message.type === "image" && (
+        {/* IMAGE without Cloudinary */}
+        {/* {message.type === "image" && (
           <img
             src={`http://localhost:5000${message.fileUrl}`}
             className="max-w-xs rounded"
           />
+        )}  */}
+
+        {/* IMAGE with Cloudinary */}
+        {message.type === "image" && (
+          <img src={message.fileUrl} alt="img" className="rounded max-w-xs" />
         )}
 
-        {/* FILE */}
-        {message.type === "file" && (
+        {/* FILE  without Cloudinary*/}
+        {/* {message.type === "file" && (
           <a
             href={`http://localhost:5000${message.fileUrl}`}
             target="_blank"
             className="underline text-blue-600"
           >
             📎 {message.fileName}
+          </a>
+        )} */}
+
+        {message.type === "file" && (
+          <a
+            href={message.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-blue-400"
+          >
+            📎 {message.content}
           </a>
         )}
 

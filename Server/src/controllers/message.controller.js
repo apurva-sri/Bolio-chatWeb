@@ -1,3 +1,5 @@
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
 const Message = require("../models/Message");
 const Chat = require("../models/Chat");
 
@@ -5,47 +7,83 @@ const Chat = require("../models/Chat");
 // @route   POST /api/message
 // @access  Private
 const sendMessage = async (req, res) => {
-  const { content, chatId } = req.body;
+  try {
+    const { content, chatId } = req.body;
 
-  if (!chatId) {
-    return res.status(400).json({ message: "chatId required" });
-  }
+    if (!chatId) {
+      return res.status(400).json({ message: "chatId required" });
+    }
 
-  let messageData = {
-    sender: req.user._id,
-    chat: chatId,
-    deliveredTo: [],
-    readBy: [req.user._id],
-  };
+    // base message object (common for all types)
+    let messageData = {
+      sender: req.user._id,
+      chat: chatId,
+      deliveredTo: [],
+      readBy: [req.user._id],
+    };
 
-  // FILE / IMAGE MESSAGE
-  if (req.file) {
-    messageData.type = req.file.mimetype.startsWith("image")
-      ? "image"
-      : "file";
+    // // FILE / IMAGE MESSAGE wihout Cloudinary
+    // if (req.file) {
+    //   messageData.type = req.file.mimetype.startsWith("image") ? "image" : "file";
 
-    messageData.content = req.file.originalname;
-    messageData.fileUrl = `/uploads/${req.file.filename}`;
-  }
-  // TEXT MESSAGE
-  else {
+    //   messageData.content = req.file.originalname;
+    //   messageData.fileUrl = `/uploads/${req.file.filename}`;
+    // }
+
+    /* FILE / IMAGE MESSAGE (Cloudinary) */
+    if (req.file) {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { resource_type: "auto" },
+        async (error, result) => {
+          if (error) {
+            console.error("Cloudinary Error:", error);
+            return res.status(500).json({ message: "Upload failed" });
+          }
+
+          messageData.type =
+            result.resource_type === "image" ? "image" : "file";
+          messageData.content = req.file.originalname;
+          messageData.fileUrl = result.secure_url;
+
+          let message = await Message.create(messageData);
+
+          message = await message.populate("sender", "username avatar");
+          message = await message.populate("chat");
+
+          await Chat.findByIdAndUpdate(chatId, {
+            lastMessage: message._id,
+          });
+
+          return res.status(201).json(message);
+        },
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+      return;
+    }
+
+    /* TEXT MESSAGE */
     if (!content) {
       return res.status(400).json({ message: "content required" });
     }
+
     messageData.type = "text";
     messageData.content = content;
+
+    let message = await Message.create(messageData);
+
+    message = await message.populate("sender", "username avatar");
+    message = await message.populate("chat");
+
+    await Chat.findByIdAndUpdate(chatId, {
+      lastMessage: message._id,
+    });
+
+    return res.status(201).json(message);
+  } catch (err) {
+    console.error("Send Message Error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
-
-  let message = await Message.create(messageData);
-
-  message = await message.populate("sender", "username avatar");
-  message = await message.populate("chat");
-
-  await Chat.findByIdAndUpdate(chatId, {
-    lastMessage: message._id,
-  });
-
-  res.status(201).json(message);
 };
 
 // @desc    Get all messages of a chat
@@ -75,7 +113,7 @@ const markMessagesRead = async (req, res) => {
     },
     {
       $addToSet: { readBy: userId },
-    }
+    },
   );
 
   res.status(200).json({ success: true });
@@ -92,7 +130,5 @@ const markDelivered = async (req, res) => {
 
   res.status(200).json({ success: true });
 };
-
-
 
 module.exports = { sendMessage, getMessages, markMessagesRead, markDelivered };
