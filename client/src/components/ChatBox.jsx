@@ -52,7 +52,7 @@ const ChatBox = ({ chat }) => {
     const handleMessage = async (message) => {
       if (!message || !message._id) return;
 
-      // 1️⃣ Add message to UI
+      // Add message to UI
       setMessages((prev) => [...prev, message]);
 
       // MARK AS DELIVERED

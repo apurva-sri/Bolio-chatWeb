@@ -40,13 +40,14 @@ const sendMessage = async (req, res) => {
             return res.status(500).json({ message: "Upload failed" });
           }
 
-          messageData.type =
-            result.resource_type === "image" ? "image" : "file";
+          const isImage =
+            req.file.mimetype.startsWith("image/") && result.format !== "pdf";
+
+          messageData.type = isImage ? "image" : "file";
           messageData.content = req.file.originalname;
           messageData.fileUrl = result.secure_url;
 
           let message = await Message.create(messageData);
-
           message = await message.populate("sender", "username avatar");
           message = await message.populate("chat");
 
