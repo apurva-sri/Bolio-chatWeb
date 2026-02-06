@@ -30,7 +30,7 @@ const sendMessage = async (req, res) => {
     //   messageData.fileUrl = `/uploads/${req.file.filename}`;
     // }
 
-    /* FILE / IMAGE MESSAGE (Cloudinary) */
+    /* FILE / IMAGE / AUDIO (Cloudinary) */
     if (req.file) {
       const uploadStream = cloudinary.uploader.upload_stream(
         { resource_type: "auto" },
@@ -42,9 +42,18 @@ const sendMessage = async (req, res) => {
 
           const isImage =
             req.file.mimetype.startsWith("image/") && result.format !== "pdf";
+          // Cloudinary PDF ko bhi resource_type: "image" return kar deta hai
+          // (because it generates image previews / thumbnails for PDFs)
+          
+          if (isImage) {
+            messageData.type = "image";
+          } else if (result.resource_type === "video") {
+            messageData.type = "audio"; // 🔥 audio comes as video/mp3
+          } else {
+            messageData.type = "file";
+          }
 
-          messageData.type = isImage ? "image" : "file";
-          messageData.content = req.file.originalname;
+          messageData.content = req.file.originalname || "Voice message";
           messageData.fileUrl = result.secure_url;
 
           let message = await Message.create(messageData);

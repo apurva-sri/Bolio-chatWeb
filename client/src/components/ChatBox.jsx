@@ -15,6 +15,8 @@ const ChatBox = ({ chat }) => {
 
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const mediaRecorderRef = useRef(null); // REQUIRED for audio sending
+  const audioChunksRef = useRef([]); // REQUIRED for audio sending
   const fileRef = useRef(null); // REQUIRED for file sending
 
   /* =========================
@@ -192,6 +194,12 @@ const ChatBox = ({ chat }) => {
     socket.emit("new-message", data);
   };
 
+  const startRecording = async () =>{
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    const mediaRecorder = new MediaRecorder(stream);
+
+     
+  }
   /* =========================
      UI
      ========================= */
