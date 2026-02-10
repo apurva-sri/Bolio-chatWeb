@@ -48,7 +48,7 @@ const sendMessage = async (req, res) => {
           if (isImage) {
             messageData.type = "image";
           } else if (result.resource_type === "video") {
-            messageData.type = "audio"; // 🔥 audio comes as video/mp3
+            messageData.type = "audio"; //audio comes as video/mp3
           } else {
             messageData.type = "file";
           }

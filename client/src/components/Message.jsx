@@ -62,6 +62,12 @@ const Message = ({ message }) => {
           </a>
         )}
 
+        {message.type === "audio" && (
+          <audio controls className="w-64">
+            <source src={message.fileUrl} type="audio/webm" />
+          </audio>
+        )}
+
         <div className="flex justify-end items-center gap-1 text-xs mt-1 opacity-70">
           <span>{time}</span>
 

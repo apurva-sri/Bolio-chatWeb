@@ -194,12 +194,42 @@ const ChatBox = ({ chat }) => {
     socket.emit("new-message", data);
   };
 
-  const startRecording = async () =>{
-    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mediaRecorder = new MediaRecorder(stream);
 
-     
-  }
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      audioChunksRef.current.push(e.data);
+    };
+
+    mediaRecorder.start();
+  };
+
+  const stopRecording = async () => {
+    mediaRecorderRef.current.stop();
+
+    mediaRecorderRef.current.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, {
+        type: "audio/webm",
+      });
+
+      const formData = new FormData();
+      formData.append("file", audioBlob, "voice-message.webm");
+      formData.append("chatId", chat._id);
+
+      const { data } = await API.post("/message", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setMessages((prev) => [...prev, data]);
+      socket.emit("new-message", data);
+    };
+  };
+
+
   /* =========================
      UI
      ========================= */
@@ -224,6 +254,14 @@ const ChatBox = ({ chat }) => {
 
       <div className="p-3 flex border-t gap-2">
         <button onClick={() => fileRef.current.click()}>📎</button>
+        <button
+          onMouseDown={startRecording}
+          onMouseUp={stopRecording}
+          className="px-2"
+        >
+          🎤
+        </button>
+
         <input type="file" hidden ref={fileRef} onChange={sendFile} />
 
         <input
