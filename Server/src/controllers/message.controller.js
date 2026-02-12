@@ -142,16 +142,16 @@ const markDelivered = async (req, res) => {
 };
 
 // @route PUT /api/message/delete/me/:messageId
-const delteforMe = async(req,res)=>{
+const deleteForMe = async (req, res) => {
   const messageId = req.params.messageId;
-  const userId =req.user._id;
+  const userId = req.user._id;
 
-  await Message.findByIdAndUpdate(messageId,{
-    $addToSet: {seleteFor: userId},
+  await Message.findByIdAndUpdate(messageId, {
+    $addToSet: { seleteFor: userId },
   });
 
-  res.status(200).json({success: true});
-}
+  res.status(200).json({ success: true });
+};
 
 // @route PUT /api/message/delete/everyone/:messageId
 const deleteForEveryone = async (req, res) => {
@@ -180,5 +180,6 @@ module.exports = {
   getMessages,
   markMessagesRead,
   markDelivered,
-  delteforMe,
+  deleteForMe,
+  deleteForEveryone,
 };

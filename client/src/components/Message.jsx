@@ -68,6 +68,12 @@ const Message = ({ message }) => {
           </audio>
         )}
 
+        {message.type === "deleted" && (
+          <p className="text-gray-400 italic text-xs">
+            This message was deleted
+          </p>
+        )}
+
         <div className="flex justify-end items-center gap-1 text-xs mt-1 opacity-70">
           <span>{time}</span>
 

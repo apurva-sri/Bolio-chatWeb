@@ -6,6 +6,8 @@ const {
   getMessages,
   markMessagesRead,
   markDelivered,
+  deleteForMe,
+  deleteForEveryone,
 } = require("../controllers/message.controller");
 const upload = require("../middleware/upload");
 

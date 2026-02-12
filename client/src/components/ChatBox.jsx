@@ -27,7 +27,10 @@ const ChatBox = ({ chat }) => {
 
     const fetchMessages = async () => {
       const { data } = await API.get(`/message/${chat._id}`);
-      setMessages(data);
+      const filtered = data.filter(
+        (msg) => !msg.deletedFor?.includes(user._id),
+      );
+      setMessages(filtered);
 
       // mark messages as read (chat open)
       await API.put(`/message/read/${chat._id}`);
@@ -132,6 +135,24 @@ const ChatBox = ({ chat }) => {
   }, []);
 
   /* =========================
+     DELETE MESSAGE
+     ========================= */
+  useEffect(() => {
+    const handleDelete = ({ messageId, type }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId && type === "everyone"
+            ? { ...msg, type: "deleted" }
+            : msg,
+        ),
+      );
+    };
+
+    socket.on("message-deleted", handleDelete);
+    return () => socket.off("message-deleted", handleDelete);
+  }, []);
+
+  /* =========================
      AUTO SCROLL
      ========================= */
   useEffect(() => {
@@ -228,7 +249,6 @@ const ChatBox = ({ chat }) => {
       socket.emit("new-message", data);
     };
   };
-
 
   /* =========================
      UI
