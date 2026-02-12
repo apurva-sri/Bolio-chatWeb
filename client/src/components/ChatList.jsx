@@ -35,6 +35,13 @@ const ChatList = ({ chats, setSelectedChat }) => {
       const { data } = await API.post("/chat", { userId });
 
       setSelectedChat(data);
+
+      // ADD NEW CHAT TO LIST IF NOT EXISTS
+      setChats((prev) => {
+        if (prev.find((c) => c._id === data._id)) return prev;
+        return [data, ...prev];
+      });
+      
       setSearchResults([]);
       setSearch("");
     } catch (error) {

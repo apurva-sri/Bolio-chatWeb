@@ -263,6 +263,15 @@ const ChatBox = ({ chat }) => {
 
   return (
     <div className="w-2/3 flex flex-col">
+
+      {/*CHAT HEADER */}
+      <div className="p-4 border-b font-semibold bg-white shadow-sm">
+        {chat.isGroupChat
+          ? chat.chatName
+          : chat.users.find((u) => u._id !== user._id)?.username}
+      </div>
+
+      {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.map((msg) => (
           <Message key={msg._id} message={msg} />
