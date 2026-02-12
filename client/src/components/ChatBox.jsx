@@ -12,6 +12,9 @@ const ChatBox = ({ chat }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const timerRef = useRef(null);
 
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -217,8 +220,8 @@ const ChatBox = ({ chat }) => {
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
 
+    const mediaRecorder = new MediaRecorder(stream);
     mediaRecorderRef.current = mediaRecorder;
     audioChunksRef.current = [];
 
@@ -227,10 +230,19 @@ const ChatBox = ({ chat }) => {
     };
 
     mediaRecorder.start();
+    setIsRecording(true);
+
+    // ⏱ Timer
+    timerRef.current = setInterval(() => {
+      setRecordingTime((prev) => prev + 1);
+    }, 1000);
   };
 
-  const stopRecording = async () => {
+
+  const stopRecording = () => {
     mediaRecorderRef.current.stop();
+    setIsRecording(false);
+    clearInterval(timerRef.current);
 
     mediaRecorderRef.current.onstop = async () => {
       const audioBlob = new Blob(audioChunksRef.current, {
@@ -247,8 +259,11 @@ const ChatBox = ({ chat }) => {
 
       setMessages((prev) => [...prev, data]);
       socket.emit("new-message", data);
+
+      setRecordingTime(0);
     };
   };
+
 
   /* =========================
      UI
@@ -263,7 +278,6 @@ const ChatBox = ({ chat }) => {
 
   return (
     <div className="w-2/3 flex flex-col">
-
       {/*CHAT HEADER */}
       <div className="p-4 border-b font-semibold bg-white shadow-sm">
         {chat.isGroupChat
@@ -283,23 +297,29 @@ const ChatBox = ({ chat }) => {
 
       <div className="p-3 flex border-t gap-2">
         <button onClick={() => fileRef.current.click()}>📎</button>
-        <button
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          className="px-2"
-        >
-          🎤
-        </button>
+        {!isRecording ? (
+          <button onClick={startRecording}>🎤</button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-red-500 animate-pulse">🔴 Recording</span>
+            <span>{recordingTime}s</span>
+
+            <button
+              onClick={stopRecording}
+              className="bg-red-500 text-white px-2 rounded"
+            >
+              Stop
+            </button>
+          </div>
+        )}
 
         <input type="file" hidden ref={fileRef} onChange={sendFile} />
-
         <input
           value={newMessage}
           onChange={handleTyping}
           className="flex-1 border rounded px-3"
           placeholder="Type a message..."
         />
-
         <button onClick={sendMessage} className="px-4 bg-black text-white">
           Send
         </button>
