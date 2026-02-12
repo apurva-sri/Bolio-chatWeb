@@ -44,6 +44,9 @@ const messageSchema = new mongoose.Schema(
     fileName: {
       type: String,
     },
+
+    deleteFor:[{type: mongoose.Schema.Types.ObjectId, ref:"User"}],
+    isDeletedForEveryone: {type: Boolean, default: false},
   },
   { timestamps: true },
 );

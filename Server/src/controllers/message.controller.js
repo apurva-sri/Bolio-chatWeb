@@ -141,4 +141,44 @@ const markDelivered = async (req, res) => {
   res.status(200).json({ success: true });
 };
 
-module.exports = { sendMessage, getMessages, markMessagesRead, markDelivered };
+// @route PUT /api/message/delete/me/:messageId
+const delteforMe = async(req,res)=>{
+  const messageId = req.params.messageId;
+  const userId =req.user._id;
+
+  await Message.findByIdAndUpdate(messageId,{
+    $addToSet: {seleteFor: userId},
+  });
+
+  res.status(200).json({success: true});
+}
+
+// @route PUT /api/message/delete/everyone/:messageId
+const deleteForEveryone = async (req, res) => {
+  const message = await Message.findById(req.params.messageId);
+
+  if (!message) {
+    return res.status(404).json({ message: "Message not found" });
+  }
+
+  if (message.sender.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: "Not allowed" });
+  }
+
+  message.type = "deleted";
+  message.content = "";
+  message.fileUrl = "";
+  message.isDeletedForEveryone = true;
+
+  await message.save();
+
+  res.status(200).json(message);
+};
+
+module.exports = {
+  sendMessage,
+  getMessages,
+  markMessagesRead,
+  markDelivered,
+  delteforMe,
+};

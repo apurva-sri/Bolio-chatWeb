@@ -81,6 +81,14 @@ io.on("connection", (socket) => {
 
     console.log("❌ Socket disconnected:", socket.id);
   });
+
+  socket.on("delete-message", ({ chatId, messageId, type }) => {
+    socket.to(chatId).emit("message-deleted", {
+      messageId,
+      type,
+    });
+  });
+
 });
 
 // listen on server, not app
