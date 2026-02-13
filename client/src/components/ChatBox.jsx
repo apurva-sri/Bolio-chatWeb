@@ -14,14 +14,14 @@ const ChatBox = ({ chat }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const timerRef = useRef(null);
+  const [replyMessage, setReplyMessage] = useState(null);
 
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null); // REQUIRED for audio sending
   const audioChunksRef = useRef([]); // REQUIRED for audio sending
   const fileRef = useRef(null); // REQUIRED for file sending
-
+  const timerRef = useRef(null);
   /* =========================
      FETCH + JOIN CHAT
      ========================= */
@@ -191,7 +191,9 @@ const ChatBox = ({ chat }) => {
     const { data } = await API.post("/message", {
       content: newMessage,
       chatId: chat._id,
+      replyTo: replyMessage?._id || null,
     });
+
     // sender optimistic UI
     setMessages((prev) => [...prev, data]);
     socket.emit("new-message", data);
@@ -288,7 +290,11 @@ const ChatBox = ({ chat }) => {
       {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.map((msg) => (
-          <Message key={msg._id} message={msg} />
+          <Message
+            key={msg._id}
+            message={msg}
+            setReplyMessage={setReplyMessage}
+          />
         ))}
         <div ref={bottomRef} />
       </div>
@@ -310,6 +316,16 @@ const ChatBox = ({ chat }) => {
             >
               Stop
             </button>
+          </div>
+        )}
+
+        {replyMessage && (
+          <div className="px-4 py-2 bg-gray-100 text-sm flex justify-between items-center">
+            <div>
+              <p className="text-gray-500 text-xs">Replying to:</p>
+              <p className="truncate">{replyMessage.content}</p>
+            </div>
+            <button onClick={() => setReplyMessage(null)}>❌</button>
           </div>
         )}
 

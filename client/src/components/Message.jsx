@@ -1,16 +1,14 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import API from "../utils/api";
-import { io } from "socket.io-client";
 
-const socket = io("http://localhost:5000");
-
-const Message = ({ message }) => {
+const Message = ({ message, setReplyMessage }) => {
   const { user } = useAuth();
-
   const [showMenu, setShowMenu] = useState(false);
 
-  const isMe = message.sender?._id === user._id;
+  const isMe = message.sender?._id
+    ? message.sender._id === user._id
+    : message.sender === user._id;
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
@@ -21,7 +19,6 @@ const Message = ({ message }) => {
   const readCount = (message.readBy?.length || 1) - 1;
   const isGroup = message.chat?.isGroupChat;
   const allRead = readCount === totalUsers - 1;
-
   const isDelivered = message.deliveredTo?.length > 0;
 
   /* =========================
@@ -33,12 +30,6 @@ const Message = ({ message }) => {
         await API.put(`/message/delete/me/${message._id}`);
       } else {
         await API.put(`/message/delete/everyone/${message._id}`);
-
-        socket.emit("message-delete", {
-          chatId: message.chat._id,
-          messageId: message._id,
-          type: "everyone",
-        });
       }
 
       setShowMenu(false);
@@ -54,7 +45,7 @@ const Message = ({ message }) => {
           isMe ? "bg-black text-white" : "bg-gray-200 text-black"
         }`}
       >
-        {/* 3 DOT MENU BUTTON */}
+        {/* 3 DOT MENU */}
         {isMe && message.type !== "deleted" && (
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -67,6 +58,16 @@ const Message = ({ message }) => {
         {/* DROPDOWN */}
         {showMenu && (
           <div className="absolute right-0 top-6 bg-white shadow rounded text-black text-sm z-10">
+            <button
+              onClick={() => {
+                setReplyMessage(message);
+                setShowMenu(false);
+              }}
+              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+            >
+              Reply
+            </button>
+
             <div
               className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
               onClick={() => handleDelete("me")}
@@ -74,26 +75,29 @@ const Message = ({ message }) => {
               Delete for me
             </div>
 
-            {isMe && (
-              <div
-                className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleDelete("everyone")}
-              >
-                Delete for everyone
-              </div>
-            )}
+            <div
+              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+              onClick={() => handleDelete("everyone")}
+            >
+              Delete for everyone
+            </div>
           </div>
         )}
 
-        {/* TEXT */}
+        {/* REPLY PREVIEW */}
+        {message.replyTo && (
+          <div className="border-l-4 border-gray-400 pl-2 mb-1 text-xs text-gray-500">
+            {message.replyTo.content}
+          </div>
+        )}
+
+        {/* CONTENT TYPES */}
         {message.type === "text" && <p>{message.content}</p>}
 
-        {/* IMAGE */}
         {message.type === "image" && (
           <img src={message.fileUrl} alt="img" className="rounded max-w-xs" />
         )}
 
-        {/* FILE */}
         {message.type === "file" && (
           <a
             href={message.fileUrl}
@@ -105,14 +109,12 @@ const Message = ({ message }) => {
           </a>
         )}
 
-        {/* AUDIO */}
         {message.type === "audio" && (
           <audio controls className="w-64">
             <source src={message.fileUrl} type="audio/webm" />
           </audio>
         )}
 
-        {/* DELETED MESSAGE */}
         {message.type === "deleted" && (
           <p className="text-gray-400 italic text-xs">
             This message was deleted
@@ -130,7 +132,6 @@ const Message = ({ message }) => {
           )}
         </div>
 
-        {/* GROUP READ INFO */}
         {isGroup && allRead && (
           <p className="text-[10px] text-gray-500 mt-1">
             Seen by {readCount} users

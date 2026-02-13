@@ -8,7 +8,7 @@ const Chat = require("../models/Chat");
 // @access  Private
 const sendMessage = async (req, res) => {
   try {
-    const { content, chatId } = req.body;
+    const { content, chatId, replyTo } = req.body;
 
     if (!chatId) {
       return res.status(400).json({ message: "chatId required" });
@@ -20,6 +20,7 @@ const sendMessage = async (req, res) => {
       chat: chatId,
       deliveredTo: [],
       readBy: [req.user._id],
+      replyTo: replyTo || null,
     };
 
     // // FILE / IMAGE MESSAGE wihout Cloudinary
@@ -59,6 +60,7 @@ const sendMessage = async (req, res) => {
           let message = await Message.create(messageData);
           message = await message.populate("sender", "username avatar");
           message = await message.populate("chat");
+          message = await message.populate("replyTo");
 
           await Chat.findByIdAndUpdate(chatId, {
             lastMessage: message._id,
@@ -84,6 +86,7 @@ const sendMessage = async (req, res) => {
 
     message = await message.populate("sender", "username avatar");
     message = await message.populate("chat");
+    message = await message.populate("replyTo");
 
     await Chat.findByIdAndUpdate(chatId, {
       lastMessage: message._id,
