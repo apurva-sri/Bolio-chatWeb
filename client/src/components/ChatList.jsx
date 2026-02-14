@@ -50,7 +50,7 @@ const ChatList = ({ chats, setSelectedChat }) => {
   };
 
   return (
-    <div className="w-1/3 border-r overflow-y-auto">
+    <div className="w-1/4 border-r overflow-y-auto">
       <div className="p-2 border-b">
         <div className="flex gap-2">
           <input

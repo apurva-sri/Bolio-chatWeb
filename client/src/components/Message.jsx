@@ -35,22 +35,24 @@ const Message = ({ message, setReplyMessage }) => {
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"} mb-3`}>
       <div
-        className={`relative px-3 py-2 rounded max-w-xs text-sm ${
-          isMe ? "bg-black text-white" : "bg-gray-200 text-black"
+        className={`group relative inline-block max-w-[65%] px-4 py-2 pr-8 rounded-2xl shadow-sm transition ${
+          isMe
+            ? "bg-black text-white rounded-br-md"
+            : "bg-gray-200 text-black rounded-bl-md"
         }`}
       >
         {/* ================= 3 DOT MENU ================= */}
         {message.type !== "deleted" && (
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="absolute -top-1 -right-1 text-xl opacity-60 hover:opacity-100"
+            className="absolute top-1 right-2 opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-gray-700"
           >
             ⋮
           </button>
         )}
 
         {showMenu && (
-          <div className="absolute right-0 top-6 bg-white shadow-md rounded text-black text-sm z-20 min-w-[150px]">
+          <div className="absolute top-8 right-1 bg-white shadow-lg rounded-lg text-black text-sm z-50 min-w-[150px]">
             {/* Reply option for BOTH */}
             <button
               onClick={() => {
@@ -120,7 +122,7 @@ const Message = ({ message, setReplyMessage }) => {
         )}
 
         {/* ================= TIME + TICKS ================= */}
-        <div className="flex justify-end items-center gap-1 text-xs mt-1 opacity-70">
+        <div className="flex justify-end items-center gap-1 text-[11px] mt-1 opacity-60">
           <span>{time}</span>
 
           {isMe && message.type !== "deleted" && (
