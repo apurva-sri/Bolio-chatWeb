@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import API from "../utils/api";
+import ImagePreview from "./ImagePreview";
 
 const Message = ({ message, setReplyMessage }) => {
   const { user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // safer sender check
   const senderId =
@@ -47,7 +49,7 @@ return (
       {message.type !== "deleted" && (
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className={`absolute top-1 ${
+          className={`absolute bottom-1 ${
             isMe ? "right-2" : "left-2"
           } opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-gray-700`}
         >
@@ -60,7 +62,7 @@ return (
         <div
           className={`absolute ${
             isMe ? "right-0" : "left-0"
-          } top-full mb-2 bg-white shadow-xl rounded-xl text-black text-sm z-50 min-w-[180px] border`}
+          } bottom-full mb-2 bg-white shadow-xl rounded-xl text-black text-sm z-50 min-w-[180px] border`}
         >
           <button
             onClick={() => {
@@ -97,11 +99,21 @@ return (
       )}
 
       {message.type === "image" && (
-        <img
-          src={message.fileUrl}
-          alt="img"
-          className="rounded-lg max-w-xs"
-        />
+        <>
+          <img
+            src={message.fileUrl}
+            alt="img"
+            onClick={() => setShowPreview(true)}
+            className="rounded max-w-xs cursor-pointer hover:opacity-90 transition"
+          />
+
+          {showPreview && (
+            <ImagePreview
+              imageUrl={message.fileUrl}
+              onClose={() => setShowPreview(false)}
+            />
+          )}
+        </>
       )}
 
       {message.type === "file" && (
@@ -122,9 +134,7 @@ return (
       )}
 
       {message.type === "deleted" && (
-        <p className="text-gray-400 italic text-xs">
-          This message was deleted
-        </p>
+        <p className="text-gray-400 italic text-xs">This message was deleted</p>
       )}
 
       {/* ================= TIME + TICKS ================= */}
