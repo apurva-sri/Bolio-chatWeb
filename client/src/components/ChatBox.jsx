@@ -288,7 +288,7 @@ const ChatBox = ({ chat }) => {
       </div>
 
       {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-[#efeae2]">
         {messages.map((msg) => (
           <Message
             key={msg._id}

@@ -100,12 +100,18 @@ return (
 
       {message.type === "image" && (
         <>
-          <img
-            src={message.fileUrl}
-            alt="img"
+          <div
+            className={`rounded-2xl overflow-hidden cursor-pointer ${
+              isMe ? "bg-green-600" : "bg-gray-300"
+            }`}
             onClick={() => setShowPreview(true)}
-            className="rounded max-w-xs cursor-pointer hover:opacity-90 transition"
-          />
+          >
+            <img
+              src={message.fileUrl}
+              alt="img"
+              className="max-h-[400px] w-full object-contain"
+            />
+          </div>
 
           {showPreview && (
             <ImagePreview
@@ -117,14 +123,46 @@ return (
       )}
 
       {message.type === "file" && (
-        <a
-          href={message.fileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-blue-500"
+        <div
+          className={`rounded-2xl p-4 w-72 cursor-pointer transition ${
+            isMe ? "bg-green-200" : "bg-gray-100"
+          }`}
+          onClick={() => window.open(message.fileUrl, "_blank")}
         >
-          📎 {message.content}
-        </a>
+          <div className="flex items-center gap-3">
+            {/* PDF Icon */}
+            <div className="bg-red-500 text-white font-bold px-2 py-1 rounded text-xs">
+              PDF
+            </div>
+
+            {/* File Info */}
+            <div className="flex-1">
+              <p className="font-semibold truncate">{message.content}</p>
+              <p className="text-xs text-gray-600 opacity-70">
+                {message.fileSize
+                  ? `${(message.fileSize / 1024).toFixed(1)} KB`
+                  : "Document"}
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom Actions */}
+          <div className="flex justify-between text-sm font-medium mt-3">
+            <span className="text-green-800">Open</span>
+            <span
+              className="text-green-800"
+              onClick={(e) => {
+                e.stopPropagation();
+                const link = document.createElement("a");
+                link.href = message.fileUrl;
+                link.download = message.content;
+                link.click();
+              }}
+            >
+              Save as
+            </span>
+          </div>
+        </div>
       )}
 
       {message.type === "audio" && (
