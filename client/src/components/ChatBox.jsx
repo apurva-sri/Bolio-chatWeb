@@ -272,14 +272,14 @@ const ChatBox = ({ chat }) => {
      ========================= */
   if (!chat) {
     return (
-      <div className="w-2/3 flex items-center justify-center">
-        Select a chat
+      <div className="flex items-center justify-center h-full bg-gray-50">
+        <p className="text-gray-500 text-lg">Select a chat</p>
       </div>
     );
   }
 
   return (
-    <div className="w-2/3 flex flex-col">
+    <div className="flex flex-col h-full bg-white">
       {/*CHAT HEADER */}
       <div className="p-4 border-b font-semibold bg-white shadow-sm">
         {chat.isGroupChat
@@ -288,7 +288,7 @@ const ChatBox = ({ chat }) => {
       </div>
 
       {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-4 bg-[#efeae2]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-[#efeae2]">
         {messages.map((msg) => (
           <Message
             key={msg._id}
@@ -301,7 +301,7 @@ const ChatBox = ({ chat }) => {
 
       {isTyping && <p className="text-sm text-gray-500 px-4">typing...</p>}
 
-      <div className="p-3 flex border-t gap-2">
+      <div className="p-3 flex items-center border-t gap-2 bg-white">
         <button onClick={() => fileRef.current.click()}>📎</button>
         {!isRecording ? (
           <button onClick={startRecording}>🎤</button>
@@ -333,7 +333,7 @@ const ChatBox = ({ chat }) => {
         <input
           value={newMessage}
           onChange={handleTyping}
-          className="flex-1 border rounded px-3"
+          className="flex-1 border rounded-full px-4 py-2 outline-none text-sm"
           placeholder="Type a message..."
         />
         <button onClick={sendMessage} className="px-4 bg-black text-white">
