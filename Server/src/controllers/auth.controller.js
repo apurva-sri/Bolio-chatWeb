@@ -1,58 +1,29 @@
 const User = require("../models/User");
-const jwt = require("jsonwebtoken");
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
 
 // Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
-  });
-};
-
-// @route   POST /api/auth/register
-// @desc    Register new user
-// @access  Public
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+    if (!username || !email || !password)
+      return res.status(400).json({ message: "All fields required" });
 
-    // 1. Validation
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        message: "All fields are required",
-      });
-    }
+    const userExists = await User.findOne({ $or: [{ email }, { username }] });
+    if (userExists)
+      return res.status(400).json({ message: "User already exists" });
 
-    // 2. Check existing user
-    const userExists = await User.findOne({
-      $or: [{ email }, { username }],
-    });
-
-    if (userExists) {
-      return res.status(400).json({
-        message: "User already exists",
-      });
-    }
-
-    // 3. Create user
-    const user = await User.create({
-      username,
-      email,
-      password,
-    });
-
-    // 4. Send response with token
+    const user = await User.create({ username, email, password });
     res.status(201).json({
       _id: user._id,
       username: user.username,
       email: user.email,
       avatar: user.avatar,
+      about: user.about,
       token: generateToken(user._id),
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Server error",
-    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -62,24 +33,15 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // 1. Validation
     if (!email || !password) {
       return res.status(400).json({
         message: "Email and password are required",
       });
     }
+    const user = await User.findOne({ email }).select("+password");
+    if (!user || !(await user.matchPassword(password)))
+      return res.status(401).json({ message: "Invalid credentials" });
 
-    // 2. Find user
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
-    }
-
-    // 3. Check password
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
@@ -88,12 +50,12 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // 4. Success response
     res.status(200).json({
       _id: user._id,
       username: user.username,
       email: user.email,
       avatar: user.avatar,
+      about: user.about,
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -111,6 +73,43 @@ const getMe = async (req, res) => {
   res.status(200).json(req.user);
 };
 
+// PUT /api/auth/profile  — update username, about, avatar
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
+    const { username, about } = req.body;
+    if (username) user.username = username;
+    if (about !== undefined) user.about = about;
 
-module.exports = { registerUser, loginUser, getMe };
+    // If avatar file uploaded → push to Cloudinary
+    if (req.file) {
+      await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "image", folder: "avatars" },
+          async (error, result) => {
+            if (error) return reject(error);
+            user.avatar = result.secure_url;
+            resolve();
+          }
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+    }
+
+    await user.save();
+    res.json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      about: user.about,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { registerUser, loginUser, getMe, updateProfile };

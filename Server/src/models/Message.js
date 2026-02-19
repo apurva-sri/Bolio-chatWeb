@@ -7,58 +7,28 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
     chat: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Chat",
       required: true,
     },
-
-    content: {
-      type: String,
-      trim: true,
-    },
-
+    content: { type: String, trim: true },
     type: {
       type: String,
-      enum: ["text", "image", "file", "audio", "video"],
+      // Added "deleted" to enum so deleteForEveryone doesn't cause a validation error
+      enum: ["text", "image", "file", "audio", "video", "deleted"],
       default: "text",
     },
-
-    deliveredTo: [
-      //Sender is NOT included in deliveredTo
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    readBy: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    fileUrl: {
-      type: String,
-    },
-    fileName: {
-      type: String,
-    },
-
-    deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    deliveredTo: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    readBy:      [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    fileUrl:     { type: String },
+    fileName:    { type: String },
+    fileSize:    { type: Number },
+    deletedFor:  [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     isDeletedForEveryone: { type: Boolean, default: false },
-
-    isDeleted: {
-      type: Boolean,
-      default: false,
-    },
-
-    replyTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Message",
-    },
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Message", messageSchema);
