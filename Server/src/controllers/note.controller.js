@@ -18,10 +18,10 @@ const createNote = async (req, res) => {
   try {
     const { title, content, color, reminderAt } = req.body;
     const note = await Note.create({
-      user: req.user._id,
-      title,
-      content,
-      color,
+      user:       req.user._id,
+      title:      title || "Untitled",
+      content:    content || "",
+      color:      color || "#1e2a30",
       reminderAt: reminderAt || null,
     });
     res.status(201).json(note);
@@ -68,17 +68,16 @@ const deleteNote = async (req, res) => {
 
 // GET /api/notes/due  — called by server cron / socket to get due reminders
 const getDueReminders = async () => {
-  const now = new Date();
-  const notes = await Note.find({
-    reminderAt: { $lte: now },
+  const now  = new Date();
+  const due  = await Note.find({
+    reminderAt:   { $lte: now },
     reminderSent: false,
-  }).populate("user", "username");
-
-  // mark sent
-  const ids = notes.map((n) => n._id);
-  await Note.updateMany({ _id: { $in: ids } }, { reminderSent: true });
-
-  return notes;
+  });
+  await Note.updateMany(
+    { _id: { $in: due.map((n) => n._id) } },
+    { $set: { reminderSent: true } }
+  );
+  return due;
 };
 
 module.exports = { getNotes, createNote, updateNote, deleteNote, getDueReminders };
