@@ -15,7 +15,6 @@ const messageSchema = new mongoose.Schema(
     content: { type: String, trim: true },
     type: {
       type: String,
-      // Added "deleted" to enum so deleteForEveryone doesn't cause a validation error
       enum: ["text", "image", "file", "audio", "video", "deleted"],
       default: "text",
     },
