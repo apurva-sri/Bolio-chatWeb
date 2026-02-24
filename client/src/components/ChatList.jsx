@@ -1,23 +1,22 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import UserSearch from "./UserSearch";
 
-const ChatList = ({ chats, setSelectedChat, selectedChat }) => {
+const ChatList = ({ chats, setSelectedChat, selectedChat, onNewChat }) => {
   const { user, onlineUsers } = useAuth();
-  const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
 
-  const filters = ["All", "Unread", "Favourites", "Groups"];
+  const filters = ["All", "Unread", "Groups"];
 
   const filtered = chats.filter((chat) => {
-    const name = chat.isGroupChat
-      ? chat.chatName
-      : chat.users?.find((u) => u._id !== user._id)?.username || "";
-    return name.toLowerCase().includes(search.toLowerCase());
+    if (activeFilter === "Groups") return chat.isGroupChat;
+    if (activeFilter === "Unread") return chat.unreadCount > 0;
+    return true;
   });
 
   return (
     <div className="flex flex-col h-full bg-[#111b21]">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#202c33]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#374045] flex items-center justify-center text-white font-semibold text-sm overflow-hidden cursor-pointer">
@@ -38,34 +37,21 @@ const ChatList = ({ chats, setSelectedChat, selectedChat }) => {
         <div className="flex items-center gap-1">
           <button className="w-9 h-9 rounded-full hover:bg-[#374045] flex items-center justify-center transition">
             <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#aebac1]">
-              <path d="M19 3H5c-1.1 0-2 .9-2 2v14l4-4h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 9H9V10h2v2zm0-4H9V6h2v2zm4 4h-2v-2h2v2zm0-4h-2V6h2v2z" />
-            </svg>
-          </button>
-          <button className="w-9 h-9 rounded-full hover:bg-[#374045] flex items-center justify-center transition">
-            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#aebac1]">
               <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
             </svg>
           </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-3 py-2 bg-[#111b21]">
-        <div className="flex items-center bg-[#202c33] rounded-lg px-3 gap-2">
-          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#8696a0] shrink-0">
-            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search or start a new chat"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-transparent text-[#d1d7db] placeholder-[#8696a0] text-sm py-2 outline-none w-full"
-          />
-        </div>
-      </div>
+      {/* ── UserSearch replaces plain search input ── */}
+      <UserSearch
+        onChatOpen={(chat) => {
+          onNewChat?.(chat); // bubble up to Chat.jsx to add to list
+          setSelectedChat(chat); // open immediately
+        }}
+      />
 
-      {/* Filter Pills */}
+      {/* ── Filter Pills ── */}
       <div className="flex gap-2 px-3 py-2 overflow-x-auto scrollbar-hide">
         {filters.map((f) => (
           <button
@@ -82,11 +68,19 @@ const ChatList = ({ chats, setSelectedChat, selectedChat }) => {
         ))}
       </div>
 
-      {/* Chat List */}
+      {/* ── Chat List ── */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-[#8696a0] text-sm">
-            No chats found
+          <div className="flex flex-col items-center justify-center h-40 gap-2 text-[#8696a0] px-4 text-center">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-10 h-10 fill-current opacity-20"
+            >
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
+            </svg>
+            <p className="text-sm">
+              No chats yet — search a username above to connect
+            </p>
           </div>
         ) : (
           filtered.map((chat) => {
@@ -96,7 +90,7 @@ const ChatList = ({ chats, setSelectedChat, selectedChat }) => {
             const initials = name?.[0]?.toUpperCase();
             const isOnline = onlineUsers?.includes(otherUser?._id);
             const isSelected = selectedChat?._id === chat._id;
-            const lastMsg = chat.latestMessage;
+            const lastMsg = chat.lastMessage || chat.latestMessage;
 
             return (
               <button
@@ -151,7 +145,6 @@ const ChatList = ({ chats, setSelectedChat, selectedChat }) => {
                               ? "📄 Document"
                               : lastMsg?.content || "Start a conversation"}
                     </p>
-                    {/* Unread badge placeholder */}
                     {chat.unreadCount > 0 && (
                       <span className="shrink-0 ml-2 bg-[#00a884] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {chat.unreadCount}

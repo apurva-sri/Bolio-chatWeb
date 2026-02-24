@@ -8,11 +8,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState([]);
 
-  /* ── Rehydrate user + tokens on page refresh ── */
+  /* ── Rehydrate on refresh ── */
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) setUser(JSON.parse(storedUser));
+      const stored = localStorage.getItem("user");
+      if (stored) setUser(JSON.parse(stored));
     } catch {
       localStorage.removeItem("user");
     } finally {
@@ -20,26 +20,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  /* ─────────────────────────────────────────────
-     LOGIN
-     Stores accessToken + refreshToken separately
-     so api.js interceptor can access them easily
-  ───────────────────────────────────────────── */
+  /* ── LOGIN ── */
   const login = async (email, password) => {
     const { data } = await API.post("/auth/login", { email, password });
 
+    // Store tokens separately so api.js interceptor can read them
     localStorage.setItem("accessToken", data.accessToken);
     localStorage.setItem("refreshToken", data.refreshToken);
 
-    // Store user info without tokens
+    // Store user WITHOUT tokens mixed in
     const { accessToken, refreshToken, ...userOnly } = data;
     localStorage.setItem("user", JSON.stringify(userOnly));
     setUser(userOnly);
   };
 
-  /* ─────────────────────────────────────────────
-     REGISTER
-  ───────────────────────────────────────────── */
+  /* ── REGISTER ── */
   const register = async (username, email, password) => {
     const { data } = await API.post("/auth/register", {
       username,
@@ -55,11 +50,7 @@ export const AuthProvider = ({ children }) => {
     setUser(userOnly);
   };
 
-  /* ─────────────────────────────────────────────
-     LOGOUT
-     Revokes refresh token on server, then clears
-     everything locally
-  ───────────────────────────────────────────── */
+  /* ── LOGOUT — revokes refresh token on server ── */
   const logout = async () => {
     try {
       const refreshToken = localStorage.getItem("refreshToken");
@@ -67,7 +58,7 @@ export const AuthProvider = ({ children }) => {
         await API.post("/auth/logout", { refreshToken });
       }
     } catch {
-      // Clear locally even if server call fails
+      // still clear locally even if server call fails
     } finally {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");

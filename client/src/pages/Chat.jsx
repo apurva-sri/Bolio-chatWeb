@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from "react";
 import ChatList from "../components/ChatList";
 import ChatBox from "../components/ChatBox";
-import API from "../utils/api";
-import { io } from "socket.io-client";
-import { useAuth } from "../context/AuthContext";
-import WelcomeScreen from "../components/WelcomeScreen";
 import Sidebar from "../components/Sidebar";
+import WelcomeScreen from "../components/WelcomeScreen";
+import API from "../utils/api";
+import socket from "../utils/socket"; 
+import { useAuth } from "../context/AuthContext";
 
-const socket = io("http://localhost:5000");
-
-/* ── Reminder Toast ── */
 const ReminderToast = ({ reminder, onClose }) => (
-  <div className="fixed bottom-6 right-6 z-[1000] bg-[#202c33] border border-[#00a884] rounded-xl p-4 shadow-2xl max-w-xs animate-slide-up">
+  <div className="fixed bottom-6 right-6 z-[1000] bg-[#202c33] border border-[#00a884] rounded-xl p-4 shadow-2xl max-w-xs animate-fade-in">
     <div className="flex items-start gap-3">
       <div className="w-8 h-8 rounded-full bg-[#00a884]/20 flex items-center justify-center shrink-0">
         <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#00a884]">
@@ -19,13 +16,22 @@ const ReminderToast = ({ reminder, onClose }) => (
         </svg>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[#00a884] text-xs font-semibold uppercase tracking-wide mb-0.5">Reminder</p>
-        <p className="text-[#e9edef] text-sm font-medium truncate">{reminder.title}</p>
+        <p className="text-[#00a884] text-xs font-semibold uppercase tracking-wide mb-0.5">
+          Reminder
+        </p>
+        <p className="text-[#e9edef] text-sm font-medium truncate">
+          {reminder.title}
+        </p>
         {reminder.content && (
-          <p className="text-[#8696a0] text-xs mt-0.5 line-clamp-2">{reminder.content}</p>
+          <p className="text-[#8696a0] text-xs mt-0.5 line-clamp-2">
+            {reminder.content}
+          </p>
         )}
       </div>
-      <button onClick={onClose} className="text-[#8696a0] hover:text-[#e9edef] transition shrink-0">
+      <button
+        onClick={onClose}
+        className="text-[#8696a0] hover:text-[#e9edef] transition shrink-0"
+      >
         <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
           <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
         </svg>
@@ -34,66 +40,69 @@ const ReminderToast = ({ reminder, onClose }) => (
   </div>
 );
 
-
 const Chat = () => {
   const { user, setOnlineUsers } = useAuth();
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [reminder, setReminder] = useState(null);
 
-  /* Online users */
+  /* ── Register user with socket + online list ── */
   useEffect(() => {
-    if (!user) return;
+    if (!user?._id) return;
     socket.emit("user-online", user._id);
-    socket.on("online-users", (users) => setOnlineUsers(users));
-    return () => socket.off("online-users");
-  }, [user]);
+    socket.on("online-users", setOnlineUsers);
+    return () => socket.off("online-users", setOnlineUsers);
+  }, [user?._id]);
 
-  /* Reminder events from server cron */
+  /* ── Reminder notifications ── */
   useEffect(() => {
-    socket.on("reminder", (data) => {
+    const handle = (data) => {
       setReminder(data);
-      // Auto-dismiss after 8s
       setTimeout(() => setReminder(null), 8000);
-    });
-    return () => socket.off("reminder");
+    };
+    socket.on("reminder", handle);
+    return () => socket.off("reminder", handle);
   }, []);
 
-  /* Fetch chats */
+  /* ── Load chats on mount ── */
   useEffect(() => {
-    const fetchChats = async () => {
-      const { data } = await API.get("/chat");
-      setChats(data);
-    };
-    fetchChats();
-  }, []);
+    if (!user?._id) return;
+    API.get("/chat")
+      .then(({ data }) => setChats(data))
+      .catch(console.error);
+  }, [user?._id]);
+
+  /* ── Add new chat (from accepted request) without refetch ── */
+  const handleNewChat = (newChat) => {
+    setChats((prev) => {
+      const exists = prev.find((c) => c._id === newChat._id);
+      return exists ? prev : [newChat, ...prev];
+    });
+  };
 
   return (
     <div className="flex h-screen bg-[#111b21] overflow-hidden">
-      {/* LEFT: icon sidebar + sliding panels */}
       <Sidebar />
 
-      {/* CHAT LIST — hidden on mobile when chat open */}
+      {/* Chat list */}
       <div
         className={`
           ${selectedChat ? "hidden" : "flex"} md:flex
           w-full md:w-[340px] lg:w-[380px] flex-shrink-0
-          flex-col border-r border-[#2a3942] bg-[#111b21]
+          flex-col border-r border-[#2a3942]
         `}
       >
         <ChatList
           chats={chats}
           setSelectedChat={setSelectedChat}
           selectedChat={selectedChat}
+          onNewChat={handleNewChat}
         />
       </div>
 
-      {/* CHAT AREA */}
+      {/* Chat area */}
       <div
-        className={`
-          ${selectedChat ? "flex" : "hidden"} md:flex
-          flex-1 flex-col min-w-0
-        `}
+        className={`${selectedChat ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0`}
       >
         {selectedChat ? (
           <ChatBox chat={selectedChat} onBack={() => setSelectedChat(null)} />
@@ -102,13 +111,11 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Reminder toast */}
       {reminder && (
         <ReminderToast reminder={reminder} onClose={() => setReminder(null)} />
       )}
     </div>
   );
 };
-
 
 export default Chat;
