@@ -1,36 +1,21 @@
-// client/src/utils/api.js
 import axios from "axios";
 
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
-});
+// Fallback to localhost if VITE_ env not injected yet
+const BASE_URL =
+  import.meta.env?.VITE_API_URL || "http://localhost:5000/api";
 
-/* ── Attach token to EVERY request ──
-   Handles both old system (user.token) and new system (accessToken key)
-   so you don't get locked out on first deploy                          */
+const API = axios.create({ baseURL: BASE_URL });
+
+/* ── Attach token to every request ── */
 API.interceptors.request.use((config) => {
-  // New system: token stored separately
-  const accessToken = localStorage.getItem("accessToken");
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
-    return config;
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-
-  // Old system fallback: token was inside user object
-  try {
-    const userRaw = localStorage.getItem("user");
-    if (userRaw) {
-      const parsed = JSON.parse(userRaw);
-      if (parsed?.token) {
-        config.headers.Authorization = `Bearer ${parsed.token}`;
-      }
-    }
-  } catch { /* ignore parse errors */ }
-
   return config;
 });
 
-/* ── Auto-refresh access token on 401 ── */
+/* ── Auto-refresh on 401 "Access token expired" ── */
 let isRefreshing = false;
 let failedQueue  = [];
 
@@ -44,7 +29,6 @@ API.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    // Only attempt refresh when server specifically says token expired
     const shouldRefresh =
       error.response?.status === 401 &&
       error.response?.data?.message === "Access token expired" &&
@@ -54,7 +38,7 @@ API.interceptors.response.use(
 
     if (isRefreshing) {
       return new Promise((resolve, reject) =>
-        failedQueue.push({ resolve, reject })
+        failedQueue.push({ resolve, reject }),
       ).then((token) => {
         original.headers.Authorization = `Bearer ${token}`;
         return API(original);
@@ -68,28 +52,25 @@ API.interceptors.response.use(
       const refreshToken = localStorage.getItem("refreshToken");
       if (!refreshToken) throw new Error("No refresh token");
 
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth/refresh`,
-        { refreshToken }
-      );
+      const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {
+        refreshToken,
+      });
 
       localStorage.setItem("accessToken",  data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       API.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
       processQueue(null, data.accessToken);
-
       original.headers.Authorization = `Bearer ${data.accessToken}`;
       return API(original);
     } catch (err) {
       processQueue(err, null);
-      // Refresh failed — clear everything and redirect to login
       localStorage.clear();
       window.location.href = "/login";
       return Promise.reject(err);
     } finally {
       isRefreshing = false;
     }
-  }
+  },
 );
 
 export default API;
