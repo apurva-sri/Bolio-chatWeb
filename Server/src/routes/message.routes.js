@@ -8,9 +8,12 @@ const {
   markDelivered,
   deleteForMe,
   deleteForEveryone,
+  getUnreadCounts,
 } = require("../controllers/message.controller");
 const upload = require("../middleware/upload");
 
+
+router.get("/unread-counts", protect, getUnreadCounts);
 router.post("/", protect, upload.single("file"), sendMessage);
 router.get("/:chatId", protect, getMessages);
 router.put("/read/:chatId", protect, markMessagesRead);

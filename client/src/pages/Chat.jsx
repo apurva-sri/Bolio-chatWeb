@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import ChatList from "../components/ChatList";
-import ChatBox from "../components/ChatBox";
-import Sidebar from "../components/Sidebar";
-import WelcomeScreen from "../components/WelcomeScreen";
-import API from "../utils/api";
-import socket from "../utils/socket";
-import { useAuth } from "../context/AuthContext";
+import ChatList             from "../components/ChatList";
+import ChatBox              from "../components/ChatBox";
+import Sidebar              from "../components/Sidebar";
+import WelcomeScreen        from "../components/WelcomeScreen";
+import API                  from "../utils/api";
+import socket               from "../utils/socket";
+import { useAuth }          from "../context/AuthContext";
 import usePushNotifications from "../hooks/usePushNotifications";
 
 /* ─── Reminder Toast ─── */
@@ -61,14 +61,9 @@ const AcceptedToast = ({ data, onClose, onOpen }) => (
         <p className="text-[#e9edef] text-sm font-semibold">
           {data.acceptedBy?.username}
         </p>
-        <p className="text-[#8696a0] text-xs">
-          accepted your connection request
-        </p>
+        <p className="text-[#8696a0] text-xs">accepted your connection request</p>
         <button
-          onClick={() => {
-            onOpen(data.chat);
-            onClose();
-          }}
+          onClick={() => { onOpen(data.chat); onClose(); }}
           className="mt-2 px-3 py-1 rounded-lg bg-[#00a884] text-white text-xs font-semibold hover:bg-[#02c197] transition"
         >
           Open chat →
@@ -89,9 +84,9 @@ const AcceptedToast = ({ data, onClose, onOpen }) => (
 /* ─── Main Chat Page ─── */
 const Chat = () => {
   const { user, setOnlineUsers } = useAuth();
-  const [chats, setChats] = useState([]);
+  const [chats,        setChats]        = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
-  const [reminders, setReminders] = useState([]); // queue of reminders
+  const [reminders,    setReminders]    = useState([]); // queue of reminders
   const [acceptedData, setAcceptedData] = useState(null);
 
   /* ── Register push notifications (safe — skips if no VAPID key) ── */
@@ -163,6 +158,25 @@ const Chat = () => {
     });
   }, []);
 
+  /* ── Sender's own ChatList update after sending a message ────────
+     socket.emit("new-message") only goes to OTHER users in the room.
+     The sender's ChatList never gets message-received for their own
+     messages, so we update it directly via this callback.
+  ─────────────────────────────────────────────────────────────── */
+  const handleMessageSent = useCallback((message) => {
+    const chatId = typeof message.chat === "object"
+      ? message.chat._id?.toString()
+      : message.chat?.toString();
+    setChats((prev) => {
+      const idx = prev.findIndex((c) => c._id?.toString() === chatId);
+      if (idx === -1) return prev;
+      const updated = [...prev];
+      updated[idx]  = { ...updated[idx], lastMessage: message };
+      const [moved] = updated.splice(idx, 1);
+      return [moved, ...updated];
+    });
+  }, []);
+
   /* ── Dismiss a specific reminder from queue ── */
   const dismissReminder = (id) => {
     setReminders((prev) => prev.filter((r) => r.id !== id));
@@ -193,7 +207,11 @@ const Chat = () => {
         className={`${selectedChat ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0`}
       >
         {selectedChat ? (
-          <ChatBox chat={selectedChat} onBack={() => setSelectedChat(null)} />
+          <ChatBox
+            chat={selectedChat}
+            onBack={() => setSelectedChat(null)}
+            onMessageSent={handleMessageSent}
+          />
         ) : (
           <WelcomeScreen />
         )}

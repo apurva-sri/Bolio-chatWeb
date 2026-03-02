@@ -1,8 +1,7 @@
 import axios from "axios";
 
 // Fallback to localhost if VITE_ env not injected yet
-const BASE_URL =
-  import.meta.env?.VITE_API_URL || "http://localhost:5000/api";
+const BASE_URL = import.meta.env?.VITE_API_URL || "http://localhost:5000/api";
 
 const API = axios.create({ baseURL: BASE_URL });
 
@@ -17,7 +16,7 @@ API.interceptors.request.use((config) => {
 
 /* ── Auto-refresh on 401 "Access token expired" ── */
 let isRefreshing = false;
-let failedQueue  = [];
+let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token)));
@@ -46,7 +45,7 @@ API.interceptors.response.use(
     }
 
     original._retry = true;
-    isRefreshing    = true;
+    isRefreshing = true;
 
     try {
       const refreshToken = localStorage.getItem("refreshToken");
@@ -56,7 +55,7 @@ API.interceptors.response.use(
         refreshToken,
       });
 
-      localStorage.setItem("accessToken",  data.accessToken);
+      localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       API.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
       processQueue(null, data.accessToken);

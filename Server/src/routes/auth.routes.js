@@ -1,21 +1,23 @@
 const express = require("express");
 const router = express.Router();
-const {
-  registerUser,
-  loginUser,
-  refreshAccessToken,
-  logoutUser,
-  getMe,
-  updateProfile,
-} = require("../controllers/auth.controller");
 const { protect } = require("../middleware/auth.middleware");
+const {
+  sendMessage,
+  getMessages,
+  markMessagesRead,
+  markDelivered,
+  deleteForMe,
+  deleteForEveryone,
+  getUnreadCounts,
+} = require("../controllers/message.controller");
 const upload = require("../middleware/upload");
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-router.post("/refresh", refreshAccessToken); // get new access token
-router.post("/logout", logoutUser); // revoke refresh token
-router.get("/me", protect, getMe);
-router.put("/profile", protect, upload.single("avatar"), updateProfile);
+router.get("/unread-counts", protect, getUnreadCounts);
+router.post("/", protect, upload.single("file"), sendMessage);
+router.get("/:chatId", protect, getMessages);
+router.put("/read/:chatId", protect, markMessagesRead);
+router.put("/delivered/:id", protect, markDelivered);
+router.put("/delete/me/:messageId", protect, deleteForMe);
+router.put("/delete/everyone/:messageId", protect, deleteForEveryone);
 
 module.exports = router;

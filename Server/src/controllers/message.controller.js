@@ -3,16 +3,24 @@ const streamifier = require("streamifier");
 const Message = require("../models/Message");
 const Chat = require("../models/Chat");
 
-// @desc    Send message (TEXT / IMAGE / FILE)
-// @route   POST /api/message
-// @access  Private
+/* ── Shared populate helper ── */
+const populateMessage = (query) =>
+  query
+    .populate("sender", "username avatar")
+    .populate("chat")
+    .populate({
+      path: "replyTo",
+      select: "content type fileUrl sender",
+      populate: { path: "sender", select: "username avatar _id" },
+    });
+
+/* ─────────────────────────────────────────────
+   POST /api/message
+───────────────────────────────────────────── */
 const sendMessage = async (req, res) => {
   try {
     const { content, chatId, replyTo } = req.body;
-
-    if (!chatId) {
-      return res.status(400).json({ message: "chatId required" });
-    }
+    if (!chatId) return res.status(400).json({ message: "chatId required" });
 
     let messageData = {
       sender: req.user._id,
@@ -22,43 +30,36 @@ const sendMessage = async (req, res) => {
       replyTo: replyTo || null,
     };
 
-
-    /* FILE / IMAGE / AUDIO (Cloudinary) */
+    /* ── FILE / IMAGE / AUDIO upload to Cloudinary ── */
     if (req.file) {
       const uploadStream = cloudinary.uploader.upload_stream(
         { resource_type: "auto", type: "upload", access_mode: "public" },
         async (error, result) => {
           if (error) {
-            console.error("Cloudinary Error in Message:", error);
+            console.error("Cloudinary Error:", error);
             return res.status(500).json({ message: "Upload failed" });
           }
 
           const isImage =
             req.file.mimetype.startsWith("image/") && result.format !== "pdf";
 
-          if (isImage) {
-            messageData.type = "image";
-          } else if (result.resource_type === "video") {
-            messageData.type = "audio"; //audio comes as video/mp3
-          } else {
-            messageData.type = "file";
-          }
+          messageData.type = isImage
+            ? "image"
+            : result.resource_type === "video"
+              ? "audio"
+              : "file";
 
           messageData.content = req.file.originalname || "Voice message";
           messageData.fileUrl = result.secure_url.replace(
             "/image/upload/",
             `/${result.resource_type}/upload/`,
           );
+          messageData.fileSize = req.file.size;
 
           let message = await Message.create(messageData);
-          message = await message.populate("sender", "username avatar");
-          message = await message.populate("chat");
-          message = await message.populate("replyTo");
+          message = await populateMessage(Message.findById(message._id));
 
-          await Chat.findByIdAndUpdate(chatId, {
-            lastMessage: message._id,
-          });
-
+          await Chat.findByIdAndUpdate(chatId, { lastMessage: message._id });
           return res.status(201).json(message);
         },
       );
@@ -67,54 +68,51 @@ const sendMessage = async (req, res) => {
       return;
     }
 
-    // TEXT MESSAGE 
-    if (!content) {
-      return res.status(400).json({ message: "content required" });
-    }
+    /* ── TEXT ── */
+    if (!content) return res.status(400).json({ message: "content required" });
 
     messageData.type = "text";
     messageData.content = content;
 
     let message = await Message.create(messageData);
+    message = await populateMessage(Message.findById(message._id));
 
-    message = await message.populate("sender", "username avatar");
-    message = await message.populate("chat");
-    message = await message.populate("replyTo");
-
-    await Chat.findByIdAndUpdate(chatId, {
-      lastMessage: message._id,
-    });
-
+    await Chat.findByIdAndUpdate(chatId, { lastMessage: message._id });
     return res.status(201).json(message);
   } catch (err) {
-    console.error("Send Message Error:", err);
+    console.error("sendMessage error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-// @desc    Get all messages of a chat
-// @route   GET /api/message/:chatId
-// @access  Private
+/* ─────────────────────────────────────────────
+   GET /api/message/:chatId
+───────────────────────────────────────────── */
 const getMessages = async (req, res) => {
   try {
     const messages = await Message.find({ chat: req.params.chatId })
       .populate("sender", "username avatar")
-      .populate("replyTo", "content type sender")
+      .populate({
+        path: "replyTo",
+        select: "content type fileUrl sender",
+        populate: { path: "sender", select: "username avatar _id" },
+      })
       .sort({ createdAt: 1 });
+
     res.status(200).json(messages);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// @desc    Mark messages as read
-// @route   PUT /api/message/read/:chatId
-// @access  Private
+/* ─────────────────────────────────────────────
+   PUT /api/message/read/:chatId
+───────────────────────────────────────────── */
 const markMessagesRead = async (req, res) => {
   try {
     await Message.updateMany(
       { chat: req.params.chatId, readBy: { $ne: req.user._id } },
-      { $addToSet: { readBy: req.user._id } }
+      { $addToSet: { readBy: req.user._id } },
     );
     res.status(200).json({ success: true });
   } catch (err) {
@@ -122,7 +120,9 @@ const markMessagesRead = async (req, res) => {
   }
 };
 
-// @route PUT /api/message/delivered/:id
+/* ─────────────────────────────────────────────
+   PUT /api/message/delivered/:id
+───────────────────────────────────────────── */
 const markDelivered = async (req, res) => {
   try {
     await Message.findByIdAndUpdate(req.params.id, {
@@ -134,10 +134,11 @@ const markDelivered = async (req, res) => {
   }
 };
 
-// @route PUT /api/message/delete/me/:messageId
+/* ─────────────────────────────────────────────
+   PUT /api/message/delete/me/:messageId
+───────────────────────────────────────────── */
 const deleteForMe = async (req, res) => {
   try {
-    // FIX: was "seleteFor" (typo) → correct field is "deletedFor"
     await Message.findByIdAndUpdate(req.params.messageId, {
       $addToSet: { deletedFor: req.user._id },
     });
@@ -147,7 +148,9 @@ const deleteForMe = async (req, res) => {
   }
 };
 
-// @route PUT /api/message/delete/everyone/:messageId
+/* ─────────────────────────────────────────────
+   PUT /api/message/delete/everyone/:messageId
+───────────────────────────────────────────── */
 const deleteForEveryone = async (req, res) => {
   try {
     const message = await Message.findById(req.params.messageId);
@@ -168,6 +171,39 @@ const deleteForEveryone = async (req, res) => {
   }
 };
 
+/* ─────────────────────────────────────────────
+   GET /api/message/unread-counts
+   Returns { chatId: count } map for current user
+   Called by ChatList on mount and on new message
+───────────────────────────────────────────── */
+const getUnreadCounts = async (req, res) => {
+  try {
+    const counts = await Message.aggregate([
+      {
+        $match: {
+          readBy: { $ne: req.user._id },
+          sender: { $ne: req.user._id },
+        },
+      },
+      {
+        $group: {
+          _id: "$chat",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const result = {};
+    counts.forEach(({ _id, count }) => {
+      result[_id.toString()] = count;
+    });
+
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   sendMessage,
   getMessages,
@@ -175,4 +211,5 @@ module.exports = {
   markDelivered,
   deleteForMe,
   deleteForEveryone,
+  getUnreadCounts,
 };

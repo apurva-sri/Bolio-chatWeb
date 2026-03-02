@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import API from "../utils/api";
 import Message from "./Message";
-import { io } from "socket.io-client";
+import socket from "../utils/socket"; // ← shared, NOT local io()
 import { useAuth } from "../context/AuthContext";
-
-const socket = io("http://localhost:5000");
 
 const ChatBox = ({ chat, onBack }) => {
   const { user, onlineUsers } = useAuth();
@@ -27,7 +25,7 @@ const ChatBox = ({ chat, onBack }) => {
   const chatName = chat?.isGroupChat ? chat.chatName : otherUser?.username;
   const isOnline = !chat?.isGroupChat && onlineUsers?.includes(otherUser?._id);
 
-  /* ======= FETCH + JOIN ======= */
+  /* ── FETCH + JOIN ── */
   useEffect(() => {
     if (!chat) return;
     const fetchMessages = async () => {
@@ -39,14 +37,22 @@ const ChatBox = ({ chat, onBack }) => {
     fetchMessages();
     socket.emit("join-chat", chat._id);
     return () => socket.emit("leave-chat", chat._id);
-  }, [chat, user._id]);
+  }, [chat?._id]);
 
-  /* ======= RECEIVE MESSAGES ======= */
+  /* ── RECEIVE MESSAGES ── */
   useEffect(() => {
     if (!chat) return;
     const handleMessage = async (message) => {
       if (!message?._id) return;
-      setMessages((prev) => [...prev, message]);
+      // Ignore messages from other chats
+      const msgChatId =
+        typeof message.chat === "object" ? message.chat?._id : message.chat;
+      if (msgChatId && msgChatId !== chat._id) return;
+
+      setMessages((prev) => {
+        if (prev.find((m) => m._id === message._id)) return prev; // dedupe
+        return [...prev, message];
+      });
       await API.put(`/message/delivered/${message._id}`);
       socket.emit("message-delivered", {
         chatId: chat._id,
@@ -58,9 +64,9 @@ const ChatBox = ({ chat, onBack }) => {
     };
     socket.on("message-received", handleMessage);
     return () => socket.off("message-received", handleMessage);
-  }, [chat, user._id]);
+  }, [chat?._id, user._id]);
 
-  /* ======= SEEN ======= */
+  /* ── SEEN ── */
   useEffect(() => {
     const handleSeen = ({ userId }) => {
       setMessages((prev) =>
@@ -82,7 +88,7 @@ const ChatBox = ({ chat, onBack }) => {
     return () => socket.off("messages-seen", handleSeen);
   }, [user._id]);
 
-  /* ======= DELIVERED ======= */
+  /* ── DELIVERED ── */
   useEffect(() => {
     const handleDelivered = ({ messageId, userId }) => {
       setMessages((prev) =>
@@ -102,7 +108,7 @@ const ChatBox = ({ chat, onBack }) => {
     return () => socket.off("message-delivered", handleDelivered);
   }, []);
 
-  /* ======= DELETE ======= */
+  /* ── DELETE ── */
   useEffect(() => {
     const handleDelete = ({ messageId, type }) => {
       setMessages((prev) =>
@@ -117,27 +123,33 @@ const ChatBox = ({ chat, onBack }) => {
     return () => socket.off("message-deleted", handleDelete);
   }, []);
 
-  /* ======= SCROLL ======= */
+  /* ── SCROLL ── */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ======= TYPING ======= */
+  /* ── TYPING ── */
   useEffect(() => {
-    socket.on("typing", () => setIsTyping(true));
-    socket.on("stop-typing", () => setIsTyping(false));
-    return () => {
-      socket.off("typing");
-      socket.off("stop-typing");
+    const onTyping = ({ chatId }) => {
+      if (chatId === chat?._id) setIsTyping(true);
     };
-  }, []);
+    const onStopTyping = ({ chatId }) => {
+      if (chatId === chat?._id) setIsTyping(false);
+    };
+    socket.on("typing", onTyping);
+    socket.on("stop-typing", onStopTyping);
+    return () => {
+      socket.off("typing", onTyping);
+      socket.off("stop-typing", onStopTyping);
+    };
+  }, [chat?._id]);
 
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
-    socket.emit("typing", chat._id);
+    socket.emit("typing", { chatId: chat._id });
     clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(
-      () => socket.emit("stop-typing", chat._id),
+      () => socket.emit("stop-typing", { chatId: chat._id }),
       1500,
     );
   };
@@ -151,7 +163,7 @@ const ChatBox = ({ chat, onBack }) => {
     });
     setMessages((prev) => [...prev, data]);
     socket.emit("new-message", data);
-    socket.emit("stop-typing", chat._id);
+    socket.emit("stop-typing", { chatId: chat._id });
     setNewMessage("");
     setReplyMessage(null);
   };
@@ -185,10 +197,7 @@ const ChatBox = ({ chat, onBack }) => {
     mediaRecorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
     mediaRecorder.start();
     setIsRecording(true);
-    timerRef.current = setInterval(
-      () => setRecordingTime((prev) => prev + 1),
-      1000,
-    );
+    timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
   };
 
   const stopRecording = () => {
@@ -211,13 +220,28 @@ const ChatBox = ({ chat, onBack }) => {
     };
   };
 
+  /* ── Reply bar helpers ── */
+  const replyName = replyMessage
+    ? replyMessage.sender?._id === user._id
+      ? "You"
+      : replyMessage.sender?.username || "Unknown"
+    : "";
+
+  const replyPreview =
+    replyMessage?.type === "image"
+      ? "📷 Photo"
+      : replyMessage?.type === "audio"
+        ? "🎵 Voice message"
+        : replyMessage?.type === "file"
+          ? "📄 Document"
+          : replyMessage?.content || "";
+
   if (!chat) return null;
 
   return (
     <div className="flex flex-col h-full bg-[#0b141a]">
-      {/* ====== HEADER ====== */}
+      {/* ── HEADER ── */}
       <div className="flex items-center gap-3 px-4 py-3 bg-[#202c33] shadow-sm shrink-0">
-        {/* Back button — mobile only */}
         <button
           onClick={onBack}
           className="md:hidden w-8 h-8 rounded-full hover:bg-[#374045] flex items-center justify-center transition"
@@ -227,7 +251,6 @@ const ChatBox = ({ chat, onBack }) => {
           </svg>
         </button>
 
-        {/* Avatar */}
         <div className="relative shrink-0">
           <div className="w-10 h-10 rounded-full bg-[#374045] flex items-center justify-center text-white font-semibold overflow-hidden">
             {otherUser?.avatar ? (
@@ -245,7 +268,6 @@ const ChatBox = ({ chat, onBack }) => {
           )}
         </div>
 
-        {/* Name + status */}
         <div className="flex-1 min-w-0">
           <p className="text-[#e9edef] font-semibold text-sm leading-tight truncate">
             {chatName}
@@ -261,31 +283,24 @@ const ChatBox = ({ chat, onBack }) => {
           </p>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center gap-1">
           {[
-            <path
-              key="search"
-              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-            />,
-            <path
-              key="more"
-              d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-            />,
-          ].map((path, i) => (
+            "M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z",
+            "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z",
+          ].map((d, i) => (
             <button
               key={i}
               className="w-9 h-9 rounded-full hover:bg-[#374045] flex items-center justify-center transition"
             >
               <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#aebac1]">
-                {path}
+                <path d={d} />
               </svg>
             </button>
           ))}
         </div>
       </div>
 
-      {/* ====== MESSAGES ====== */}
+      {/* ── MESSAGES ── */}
       <div
         className="flex-1 overflow-y-auto p-4 space-y-1"
         style={{
@@ -303,20 +318,31 @@ const ChatBox = ({ chat, onBack }) => {
         <div ref={bottomRef} />
       </div>
 
-      {/* ====== REPLY PREVIEW ====== */}
+      {/* ── REPLY BAR ── */}
       {replyMessage && (
-        <div className="flex items-center justify-between px-4 py-2 bg-[#202c33] border-l-4 border-[#00a884] mx-3 mb-1 rounded">
-          <div className="min-w-0">
-            <p className="text-[#00a884] text-xs font-medium mb-0.5">
-              Replying to message
+        <div className="flex items-center gap-2 mx-3 mb-1 rounded-xl overflow-hidden bg-[#202c33] border-l-4 border-[#00a884]">
+          <div className="flex-1 min-w-0 px-3 py-2">
+            <p className="text-[#00a884] text-xs font-semibold mb-0.5">
+              {replyName}
             </p>
-            <p className="text-[#8696a0] text-sm truncate">
-              {replyMessage.content}
-            </p>
+            {replyMessage.type === "image" && replyMessage.fileUrl ? (
+              <div className="flex items-center gap-2">
+                <p className="text-[#8696a0] text-xs flex-1 truncate">
+                  📷 Photo
+                </p>
+                <img
+                  src={replyMessage.fileUrl}
+                  alt="reply"
+                  className="w-10 h-10 object-cover rounded shrink-0"
+                />
+              </div>
+            ) : (
+              <p className="text-[#8696a0] text-xs truncate">{replyPreview}</p>
+            )}
           </div>
           <button
             onClick={() => setReplyMessage(null)}
-            className="ml-3 text-[#8696a0] hover:text-[#e9edef] transition shrink-0"
+            className="px-3 text-[#8696a0] hover:text-[#e9edef] transition shrink-0"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
@@ -325,18 +351,16 @@ const ChatBox = ({ chat, onBack }) => {
         </div>
       )}
 
-      {/* ====== INPUT BAR ====== */}
+      {/* ── INPUT BAR ── */}
       <div className="flex items-center gap-2 px-3 py-2 bg-[#202c33] shrink-0">
         {!isRecording ? (
           <>
-            {/* Emoji placeholder */}
             <button className="w-10 h-10 rounded-full hover:bg-[#374045] flex items-center justify-center transition shrink-0">
               <svg viewBox="0 0 24 24" className="w-6 h-6 fill-[#8696a0]">
                 <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
               </svg>
             </button>
 
-            {/* Attachment */}
             <button
               onClick={() => fileRef.current.click()}
               className="w-10 h-10 rounded-full hover:bg-[#374045] flex items-center justify-center transition shrink-0"
@@ -347,7 +371,6 @@ const ChatBox = ({ chat, onBack }) => {
             </button>
             <input type="file" hidden ref={fileRef} onChange={sendFile} />
 
-            {/* Message input */}
             <input
               value={newMessage}
               onChange={handleTyping}
@@ -356,7 +379,6 @@ const ChatBox = ({ chat, onBack }) => {
               placeholder="Type a message"
             />
 
-            {/* Mic or Send */}
             {newMessage.trim() ? (
               <button
                 onClick={sendMessage}
@@ -378,7 +400,6 @@ const ChatBox = ({ chat, onBack }) => {
             )}
           </>
         ) : (
-          /* Recording UI */
           <div className="flex items-center gap-3 flex-1">
             <button
               onClick={() => {
@@ -386,6 +407,7 @@ const ChatBox = ({ chat, onBack }) => {
                 setIsRecording(false);
                 clearInterval(timerRef.current);
                 setRecordingTime(0);
+                audioChunksRef.current = [];
               }}
               className="w-10 h-10 rounded-full hover:bg-[#374045] flex items-center justify-center transition shrink-0"
             >
