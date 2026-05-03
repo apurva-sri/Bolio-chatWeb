@@ -38,8 +38,8 @@ const registerUser = async (req, res) => {
     await redis.setex(`otp:${email}`, 600, registrationData);
 
     // Send OTP via Gmail
-    const message = `Welcome to Chat App!\n\nYour Account Verification OTP is: ${otp}\nIt will expire in 10 minutes.`;
-    await sendEmail({ email, subject: 'Chat App - Verify Your Account', message });
+    const message = `Welcome to Bolio App!\n\nYour Account Verification OTP is: ${otp}\nIt will expire in 10 minutes.`;
+    await sendEmail({ email, subject: 'Bolio App - Verify Your Account', message });
 
     logger.info(`[Register API] Success: OTP sent to ${email}. Pending data stored in Redis.`);
 
