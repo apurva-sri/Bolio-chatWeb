@@ -6,7 +6,7 @@ const generateAccessToken = (userId) => {
     { id: userId },
     process.env.JWT_ACCESS_SECRET || "fallback_secret",
     {
-      expiresIn: "15m",
+      expiresIn: process.env.NODE_ENV === 'production' ? '15m' : '1d',
     },
   );
 };

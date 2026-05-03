@@ -81,7 +81,6 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Incorrect OTP. Please try again.' });
     }
 
-    // OTP is correct! Now create the user in MongoDB
     const user = await User.create({
       name,
       lastName,
@@ -93,7 +92,6 @@ const verifyOtp = async (req, res) => {
       country,
     });
 
-    // Delete the pending Redis entry — cleanup
     await redis.del(`otp:${email}`);
 
     logger.info(`[Verify OTP API] Success: User ${email} verified and created in DB`);

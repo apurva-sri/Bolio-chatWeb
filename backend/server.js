@@ -3,7 +3,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
-const authRoutes = require('./routes/authRoutes');
+const authRoutes   = require('./routes/authRoutes');
+const userRoutes   = require('./routes/userRoutes');
+const friendRoutes = require('./routes/friendRoutes');
 
 dotenv.config();
 
@@ -16,7 +18,9 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth',    authRoutes);
+app.use('/api/users',   userRoutes);
+app.use('/api/friends', friendRoutes);
 
 // Error Handling Middleware
 app.use(notFound);
