@@ -10,7 +10,6 @@ api.interceptors.request.use((config) => {
 });
 
 // ─── Response Interceptor: silent token refresh on 401 ───
-// ─── Response Interceptor: silent token refresh on 401 ───
 api.interceptors.response.use(
   (response) => {
     console.log(`[API Success] ${response.config.method.toUpperCase()} ${response.config.url}`, response.data);

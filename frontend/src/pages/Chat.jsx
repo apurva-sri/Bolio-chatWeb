@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import * as api from '../services/api';
 
-// Industrial Modular Components
 import IconSidebar from '../components/chat/IconSidebar';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
