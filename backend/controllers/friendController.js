@@ -1,6 +1,7 @@
 const FriendRequest = require('../models/FriendRequest');
 const User = require('../models/User');
 const logger = require('../config/logger');
+const Chat = require("../models/Chat");
 
 /**
  * @desc  Send a friend request to another user
@@ -55,6 +56,7 @@ const sendFriendRequest = async (req, res) => {
   }
 };
 
+
 /**
  * @desc  Accept an incoming friend request
  * @route POST /api/friends/accept-request
@@ -91,11 +93,31 @@ const acceptFriendRequest = async (req, res) => {
     await User.findByIdAndUpdate(request.sender,   { $addToSet: { friends: request.receiver } });
     await User.findByIdAndUpdate(request.receiver, { $addToSet: { friends: request.sender } });
 
+    // ─── AUTO-CREATE CHAT ───
+    // Check if a 1-to-1 chat already exists between these two
+    let chat = await Chat.findOne({
+      isGroupChat: false,
+      $and: [
+        { users: { $elemMatch: { $eq: request.sender } } },
+        { users: { $elemMatch: { $eq: request.receiver } } },
+      ],
+    });
+
+    if (!chat) {
+      chat = await Chat.create({
+        chatName: "sender", // will be dynamically determined by frontend
+        isGroupChat: false,
+        users: [request.sender, request.receiver],
+      });
+      logger.info(`[Accept Request API] Created new 1-to-1 chat: ${chat._id}`);
+    }
+
     logger.success(`[Accept Request API] ${req.user.username} accepted request from userId: ${request.sender}`);
 
     res.status(200).json({
       success: true,
       message: 'Friend request accepted! You are now friends.',
+      chatId: chat._id
     });
 
   } catch (error) {

@@ -47,14 +47,14 @@ const ProfilePanel = ({ isOpen, onClose, user }) => {
 
         <div className="profile-section">
           <h4>Security</h4>
-          <div className="flex flex-col gap-2 mt-2">
-            <Button variant="secondary" size="sm" className="w-full" icon={Shield}>
-              Privacy Settings
-            </Button>
-            <Button variant="danger" size="sm" className="w-full" icon={Trash2}>
-              Block User
-            </Button>
-          </div>
+          <div className="divider"></div>
+          <Button variant="secondary" size="sm" icon={Shield}>
+            Privacy Settings
+          </Button>
+          <div style={{ height: '8px' }}></div>
+          <Button variant="danger" size="sm" icon={Trash2}>
+            Block User
+          </Button>
         </div>
       </div>
     </aside>

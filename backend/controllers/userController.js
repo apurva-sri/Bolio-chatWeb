@@ -20,8 +20,10 @@ const searchUsers = async (req, res) => {
     // Excludes: the logged-in user themselves + anyone already in their friends list
     const users = await User.find({
       username: { $regex: username, $options: 'i' },
-      _id: { $ne: req.user._id },              // exclude self
-      _id: { $nin: req.user.friends },          // exclude already-friends
+      $and: [
+        { _id: { $ne: req.user._id } },
+        { _id: { $nin: req.user.friends || [] } }
+      ]
     }).select('name lastName username avatar isOnline');
 
     logger.info(`[Search Users API] Found ${users.length} result(s) for "${username}"`);

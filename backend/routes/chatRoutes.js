@@ -3,7 +3,7 @@ const router = express.Router();
 const { accessChat, getAllChats } = require('../controllers/chatController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.post('/access', protect, accessChat);
+router.post('/', protect, accessChat);
 router.get('/',        protect, getAllChats);
 
 module.exports = router;

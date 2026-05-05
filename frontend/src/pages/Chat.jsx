@@ -25,6 +25,7 @@ const Chat = () => {
 
   // Messaging State
   const [chats, setChats] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -35,6 +36,7 @@ const Chat = () => {
   useEffect(() => {
     fetchChats();
     fetchRequests();
+    fetchFriends();
   }, []);
 
   // Socket Event Listeners
@@ -71,6 +73,13 @@ const Chat = () => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchFriends = async () => {
+    try {
+      const { data } = await api.getFriends();
+      setFriends(data.friends);
+    } catch (err) { console.error(err); }
+  };
+
   const fetchRequests = async () => {
     try {
       const { data } = await api.getIncomingRequests();
@@ -98,6 +107,17 @@ const Chat = () => {
       const { data } = await api.getMessages(chat._id);
       setMessages(data.messages);
       socket?.emit('join-chat', chat._id);
+    } catch (err) { console.error(err); }
+  };
+
+  const startChatWithFriend = async (friendId) => {
+    try {
+      const { data } = await api.accessChat(friendId);
+      // Data contains the chat object
+      if (data.chat) {
+        selectChat(data.chat);
+        fetchChats(); // refresh list
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -150,6 +170,8 @@ const Chat = () => {
         pendingRequests={pendingRequests}
         acceptRequest={acceptRequest}
         chats={chats}
+        friends={friends}
+        startChatWithFriend={startChatWithFriend}
         selectedChat={selectedChat}
         selectChat={selectChat}
         currentUser={user}

@@ -10,23 +10,28 @@ const logger = require('../config/logger');
 */
 const accessChat = async (req, res) => {
   try {
-    const { friendId } = req.body;
+    const { friendId, userId } = req.body;
+    const targetId = friendId || userId;
     const currentUserId = req.user._id;
 
-    logger.info(`[Access Chat API] ${req.user.username} trying to open chat with userId: ${friendId}`);
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: 'Please provide a userId or friendId' });
+    }
+
+    logger.info(`[Access Chat API] ${req.user.username} trying to open chat with userId: ${targetId}`);
 
     const isFriend = req.user.friends.some(
-      (id) => id.toString() === friendId.toString()
+      (id) => id.toString() === targetId.toString()
     );
 
     if (!isFriend) {
-      logger.warn(`[Access Chat API] ${req.user.username} tried to chat with non-friend: ${friendId}`);
+      logger.warn(`[Access Chat API] ${req.user.username} tried to chat with non-friend: ${targetId}`);
       return res.status(403).json({ success: false, message: 'You can only chat with your friends' });
     }
 
     let chat = await Chat.findOne({
       isGroupChat: false,
-      users: { $all: [currentUserId, friendId] },
+      users: { $all: [currentUserId, targetId] },
     })
       .populate('users', 'name lastName username avatar isOnline lastSeen')
       .populate({
@@ -40,12 +45,12 @@ const accessChat = async (req, res) => {
     }
 
     // No existing chat found — create a new one
-    const friendUser = await User.findById(friendId).select('name username');
+    const friendUser = await User.findById(targetId).select('name username');
 
     const newChat = await Chat.create({
       chatName: `${req.user.username}_${friendUser.username}`,
       isGroupChat: false,
-      users: [currentUserId, friendId],
+      users: [currentUserId, targetId],
     });
 
     // Re-fetch the created chat with populated user details

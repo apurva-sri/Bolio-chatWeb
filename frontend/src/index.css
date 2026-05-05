@@ -100,6 +100,32 @@ input, button, textarea { font-family: inherit; }
 /* ═══════════════════════════════════════════
    CHAT APP LAYOUT — 4 Panel Grid
 ═══════════════════════════════════════════ */
+/* Layout Utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: 8px; }
+.w-full { width: 100%; }
+
+.p-4 { padding: 16px; }
+.text-center { text-align: center; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.mb-3 { margin-bottom: 12px; }
+.text-secondary { color: var(--text-secondary); font-size: 14px; }
+
+.icon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+.icon-list.bottom {
+  margin-top: auto;
+}
+
 .chat-layout {
   display: grid;
   grid-template-columns: 68px 320px 1fr auto;

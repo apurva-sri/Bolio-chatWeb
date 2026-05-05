@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MessageSquare, Users, Calendar, User, Settings, FileText, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const IconSidebar = ({ activePanel, setActivePanel, hasNotifications }) => {
   const { logout } = useAuth();
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
   const navItems = [
     { id: 'chats', icon: MessageSquare, label: 'Messages' },
@@ -12,16 +13,11 @@ const IconSidebar = ({ activePanel, setActivePanel, hasNotifications }) => {
     { id: 'notes', icon: FileText, label: 'Notes' },
   ];
 
-  const bottomItems = [
-    { id: 'profile', icon: User, label: 'Profile' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
-  ];
-
   return (
     <aside className="icon-sidebar">
       <div className="logo">B</div>
       
-      <div className="flex flex-col gap-2 w-full items-center">
+      <div className="icon-list">
         {navItems.map((item) => (
           <button 
             key={item.id}
@@ -37,25 +33,36 @@ const IconSidebar = ({ activePanel, setActivePanel, hasNotifications }) => {
 
       <div className="spacer"></div>
 
-      <div className="flex flex-col gap-2 w-full items-center mb-2">
-        {bottomItems.map((item) => (
-          <button 
-            key={item.id}
-            className={`icon-btn ${activePanel === item.id ? 'active' : ''}`} 
-            onClick={() => setActivePanel(item.id)}
-            title={item.label}
-          >
-            <item.icon size={22} />
-          </button>
-        ))}
-        
+      <div className="icon-list bottom">
         <button 
-          className="icon-btn hover:text-danger mt-2" 
-          onClick={logout} 
-          title="Logout"
+          className={`icon-btn ${activePanel === 'profile' ? 'active' : ''}`} 
+          onClick={() => setActivePanel('profile')}
+          title="My Profile"
         >
-          <LogOut size={22} />
+          <User size={22} />
         </button>
+
+        <div style={{ position: 'relative' }}>
+          <button 
+            className={`icon-btn ${activePanel === 'settings' ? 'active' : ''}`} 
+            onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+            title="Settings"
+          >
+            <Settings size={22} />
+          </button>
+          
+          {showSettingsDropdown && (
+            <div className="glass-panel" style={{
+              position: 'absolute', bottom: '100%', left: '100%', 
+              marginLeft: '12px', width: '180px', padding: '8px', zIndex: 100
+            }}>
+              <button className="chat-item" style={{ width: '100%', border: 'none', background: 'transparent' }} onClick={() => { setActivePanel('settings'); setShowSettingsDropdown(false); }}>Preferences</button>
+              <button className="chat-item" style={{ width: '100%', border: 'none', background: 'transparent' }} onClick={() => { setActivePanel('settings'); setShowSettingsDropdown(false); }}>Privacy</button>
+              <div className="divider"></div>
+              <button className="chat-item" style={{ width: '100%', border: 'none', background: 'transparent', color: 'var(--danger)' }} onClick={logout}>Logout</button>
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

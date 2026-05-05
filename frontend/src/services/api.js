@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://localhost:5000/api' });
+const api = axios.create({ baseURL: '/api' });
 
 // ─── Request Interceptor: attach access token ───
 api.interceptors.request.use((config) => {
@@ -10,19 +10,29 @@ api.interceptors.request.use((config) => {
 });
 
 // ─── Response Interceptor: silent token refresh on 401 ───
+// ─── Response Interceptor: silent token refresh on 401 ───
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`[API Success] ${response.config.method.toUpperCase()} ${response.config.url}`, response.data);
+    return response;
+  },
   async (error) => {
     const original = error.config;
+    console.error(`[API Error] ${original?.method?.toUpperCase()} ${original?.url}`, error.response?.data || error.message);
+
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post('http://localhost:5000/api/auth/refresh', { refreshToken });
+        if (!refreshToken) throw new Error("No refresh token");
+
+        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
         localStorage.setItem('accessToken', data.accessToken);
+        
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
-      } catch {
+      } catch (refreshError) {
+        console.error("[Auth] Session expired, logging out...");
         localStorage.clear();
         window.location.href = '/login';
       }
@@ -45,10 +55,10 @@ export const sendFriendRequest   = (receiverId) => api.post('/friends/send-reque
 export const acceptFriendRequest = (requestId)  => api.post('/friends/accept-request', { requestId });
 export const rejectFriendRequest = (requestId)  => api.post('/friends/reject-request', { requestId });
 export const getIncomingRequests = ()            => api.get('/friends/requests');
-export const getFriendsList      = ()            => api.get('/friends/list');
+export const getFriends          = ()            => api.get('/friends/list');
 
 // ─── CHATS ───
-export const accessChat  = (friendId) => api.post('/chats/access', { friendId });
+export const accessChat  = (userId) => api.post('/chats', { userId });
 export const getAllChats  = ()         => api.get('/chats');
 
 // ─── MESSAGES ───

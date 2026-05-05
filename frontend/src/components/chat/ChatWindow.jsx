@@ -15,9 +15,7 @@ const ChatWindow = ({
   if (!selectedChat) {
     return (
       <div className="empty-state">
-        <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-4">
-          <MessageSquare size={40} className="text-accent" />
-        </div>
+        <MessageSquare size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
         <h3>Your conversations will appear here</h3>
         <p>Select a friend from the sidebar to start chatting.</p>
       </div>

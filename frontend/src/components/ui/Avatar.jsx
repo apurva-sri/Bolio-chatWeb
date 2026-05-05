@@ -1,4 +1,4 @@
-import React from 'react';
+import { User as UserIcon } from 'lucide-react';
 
 const Avatar = ({ 
   src, 
@@ -7,36 +7,48 @@ const Avatar = ({
   isOnline = false, 
   className = '' 
 }) => {
-  const sizes = {
-    xs: "w-6 h-6 text-[10px]",
-    sm: "w-9 h-9 text-xs",
-    md: "w-12 h-12 text-base",
-    lg: "w-16 h-16 text-xl",
-    xl: "w-24 h-24 text-3xl"
+  const getInitials = (name, username) => {
+    const text = name || username || '?';
+    const parts = text.trim().split(/\s+/);
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return text.slice(0, 2).toUpperCase();
   };
 
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const getBgColor = (text) => {
+    const colors = [
+      'linear-gradient(135deg, #6366f1, #a855f7)', // Indigo-Purple
+      'linear-gradient(135deg, #3b82f6, #2dd4bf)', // Blue-Teal
+      'linear-gradient(135deg, #f59e0b, #ef4444)', // Amber-Red
+      'linear-gradient(135deg, #10b981, #3b82f6)', // Emerald-Blue
+      'linear-gradient(135deg, #ec4899, #8b5cf6)', // Pink-Violet
+    ];
+    let hash = 0;
+    const str = text || 'default';
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
   };
+
+  const initials = getInitials(name, name); // Using name for both as a test, but let's check what we receive
 
   return (
-    <div className={`relative flex-shrink-0 ${className}`}>
-      <div className={`
-        ${sizes[size]} rounded-full flex items-center justify-center font-bold text-white overflow-hidden
-        bg-gradient-to-br from-accent to-purple-600 border border-white/10
-      `}>
+    <div className={`avatar-wrap ${className}`}>
+      <div className={`avatar ${size === 'sm' ? 'sm' : ''}`} style={{ 
+        background: src ? 'transparent' : getBgColor(name || 'User'),
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700',
+        textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+      }}>
         {src ? (
-          <img src={src} alt={name} className="w-full h-100 object-cover" />
+          <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          getInitials(name)
+          <span style={{ transform: 'translateY(-1px)' }}>{initials}</span>
         )}
       </div>
       {isOnline && (
-        <span className={`
-          absolute bottom-0.5 right-0.5 rounded-full bg-online border-2 border-bg-secondary
-          ${size === 'xs' ? 'w-2 h-2' : size === 'sm' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'}
-        `} />
+        <span className="online-dot" />
       )}
     </div>
   );

@@ -14,25 +14,20 @@ const Input = ({
           {label}
         </label>
       )}
-      <div className="relative group">
+      <div className="search-input-wrap">
         {Icon && (
           <Icon 
             size={18} 
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors duration-200" 
+            style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
           />
         )}
         <input
-          className={`
-            w-full bg-bg-tertiary border border-border rounded-xl py-2.5 outline-none transition-all duration-200
-            ${Icon ? 'pl-11 pr-4' : 'px-4'}
-            focus:border-accent focus:ring-4 focus:ring-accent-soft
-            placeholder:text-text-muted text-sm
-            ${error ? 'border-danger focus:border-danger focus:ring-danger/10' : ''}
-          `}
+          className={`input-field ${className}`}
+          style={Icon ? { paddingLeft: '36px' } : {}}
           {...props}
         />
       </div>
-      {error && <p className="mt-1.5 text-xs text-danger ml-1 font-medium">{error}</p>}
+      {error && <p className="error-text" style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px' }}>{error}</p>}
     </div>
   );
 };
