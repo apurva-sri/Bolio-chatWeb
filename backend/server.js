@@ -8,6 +8,7 @@ const userRoutes   = require('./routes/userRoutes');
 const friendRoutes = require('./routes/friendRoutes');
 const chatRoutes   = require('./routes/chatRoutes');
 const messageRoutes = require('./routes/messageRoutes');
+const productivityRoutes = require('./routes/productivityRoutes');
 const http = require('http');
 const { Server } = require('socket.io');
 const { initSocket } = require('./socket/socket');
@@ -27,6 +28,7 @@ app.use('/api/users',   userRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/chats',   chatRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/productivity', productivityRoutes);
 
 // Error Handling Middleware
 app.use(notFound);

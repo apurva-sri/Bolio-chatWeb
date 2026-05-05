@@ -14,6 +14,8 @@ const Chat = () => {
   const { socket } = useSocket();
 
   // Navigation State
+  const [notes, setNotes] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [activePanel, setActivePanel] = useState('chats');
   const [showProfile, setShowProfile] = useState(false);
   
@@ -35,35 +37,124 @@ const Chat = () => {
   // Initial Data Fetching
   useEffect(() => {
     fetchChats();
-    fetchRequests();
     fetchFriends();
+    fetchRequests();
+    fetchNotes();
+    fetchReminders();
   }, []);
+
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingChatId, setTypingChatId] = useState(null);
+  const { onlineUsers } = useSocket();
 
   // Socket Event Listeners
   useEffect(() => {
     if (!socket) return;
 
     socket.on('message-received', (msg) => {
-      if (selectedChat && (msg.chat._id === selectedChat._id || msg.chat === selectedChat._id)) {
+      const msgChatId = msg.chat?._id || msg.chat;
+      if (selectedChat && (msgChatId === selectedChat._id)) {
         setMessages(prev => [...prev, msg]);
       }
       fetchChats();
+    });
+
+    socket.on('typing', (chatId) => {
+      if (selectedChat?._id === chatId) setIsTyping(true);
+    });
+
+    socket.on('stop-typing', (chatId) => {
+      if (selectedChat?._id === chatId) setIsTyping(false);
     });
 
     socket.on('friend-request-received', () => {
       fetchRequests();
     });
 
+    socket.on('friend-request-was-accepted', () => {
+      fetchFriends();
+      fetchChats();
+    });
+
     return () => {
       socket.off('message-received');
+      socket.off('typing');
+      socket.off('stop-typing');
       socket.off('friend-request-received');
+      socket.off('friend-request-was-accepted');
     };
   }, [socket, selectedChat]);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Typing logic
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+    if (!socket || !selectedChat) return;
+
+    if (!typingChatId) {
+      setTypingChatId(selectedChat._id);
+      socket.emit('typing', selectedChat._id);
+    }
+
+    let lastTypingTime = new Date().getTime();
+    setTimeout(() => {
+      let timeNow = new Date().getTime();
+      let timeDiff = timeNow - lastTypingTime;
+      if (timeDiff >= 3000 && typingChatId) {
+        socket.emit('stop-typing', selectedChat._id);
+        setTypingChatId(null);
+      }
+    }, 3000);
+  };
+
+  // ─── PRODUCTIVITY HANDLERS ───
+  const fetchNotes = async () => {
+    try {
+      const { data } = await api.getNotes();
+      setNotes(data.notes);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchReminders = async () => {
+    try {
+      const { data } = await api.getReminders();
+      setReminders(data.reminders);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAddNote = async (note) => {
+    try {
+      await api.createNote(note);
+      fetchNotes();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteNote = async (id) => {
+    try {
+      await api.deleteNote(id);
+      fetchNotes();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAddReminder = async (reminder) => {
+    try {
+      await api.createReminder(reminder);
+      fetchReminders();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleToggleReminder = async (id) => {
+    try {
+      await api.toggleReminder(id);
+      fetchReminders();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteReminder = async (id) => {
+    try {
+      await api.deleteReminder(id);
+      fetchReminders();
+    } catch (err) { console.error(err); }
+  };
 
   // ─── API HANDLERS ───
   const fetchChats = async () => {
@@ -137,6 +228,10 @@ const Chat = () => {
   const sendRequest = async (userId) => {
     try {
       await api.sendFriendRequest(userId);
+      socket?.emit('friend-request-sent', { 
+        receiverId: userId, 
+        senderData: user 
+      });
       setGlobalSearch(false);
       setSearchTerm('');
       alert('Request sent!');
@@ -145,9 +240,21 @@ const Chat = () => {
 
   const acceptRequest = async (requestId) => {
     try {
-      await api.acceptFriendRequest(requestId);
+      const { data } = await api.acceptFriendRequest(requestId);
+      socket?.emit('friend-request-accepted', {
+        senderId: data.senderId,
+        accepterData: user
+      });
       fetchRequests();
       fetchChats();
+      fetchFriends();
+    } catch (err) { console.error(err); }
+  };
+
+  const rejectRequest = async (requestId) => {
+    try {
+      await api.rejectFriendRequest(requestId);
+      fetchRequests();
     } catch (err) { console.error(err); }
   };
 
@@ -169,12 +276,21 @@ const Chat = () => {
         sendRequest={sendRequest}
         pendingRequests={pendingRequests}
         acceptRequest={acceptRequest}
+        rejectRequest={rejectRequest}
         chats={chats}
         friends={friends}
         startChatWithFriend={startChatWithFriend}
         selectedChat={selectedChat}
         selectChat={selectChat}
         currentUser={user}
+        onlineUsers={onlineUsers}
+        notes={notes}
+        reminders={reminders}
+        handleAddNote={handleAddNote}
+        handleDeleteNote={handleDeleteNote}
+        handleAddReminder={handleAddReminder}
+        handleToggleReminder={handleToggleReminder}
+        handleDeleteReminder={handleDeleteReminder}
       />
 
       <ChatWindow 
@@ -184,14 +300,18 @@ const Chat = () => {
         newMessage={newMessage}
         setNewMessage={setNewMessage}
         handleSendMessage={handleSendMessage}
+        handleTyping={handleTyping}
+        isTyping={isTyping}
         scrollRef={scrollRef}
         toggleProfile={() => setShowProfile(!showProfile)}
+        onlineUsers={onlineUsers}
       />
 
       <ProfilePanel 
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         user={selectedChat?.users.find(u => u._id !== user?._id)}
+        onlineUsers={onlineUsers}
       />
     </div>
   );

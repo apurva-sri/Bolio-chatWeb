@@ -65,4 +65,14 @@ export const getAllChats  = ()         => api.get('/chats');
 export const sendMessage = (chatId, content) => api.post('/messages/send', { chatId, content });
 export const getMessages = (chatId, page = 1) => api.get(`/messages/${chatId}?page=${page}`);
 
+// ─── Productivity (Notes & Reminders) ───
+export const getNotes = () => api.get('/productivity/notes');
+export const createNote = (note) => api.post('/productivity/notes', note);
+export const deleteNote = (id) => api.delete(`/productivity/notes/${id}`);
+
+export const getReminders = () => api.get('/productivity/reminders');
+export const createReminder = (reminder) => api.post('/productivity/reminders', reminder);
+export const toggleReminder = (id) => api.put(`/productivity/reminders/${id}`);
+export const deleteReminder = (id) => api.delete(`/productivity/reminders/${id}`);
+
 export default api;

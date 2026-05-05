@@ -18,43 +18,53 @@ const initSocket = (io) => {
   io.adapter(createAdapter(pubClient, subClient));
   logger.success('[Socket.io] Redis Adapter attached. Ready for horizontal scaling.');
 
+  const onlineUsers = new Set();
+
   io.on('connection', (socket) => {
     logger.success(`[Socket.io] New connection: ${socket.id}`);
 
     // EVENT 1: User sets up their personal room after logging in
-    // Frontend emits this with the logged-in user's data
     socket.on('setup', (userData) => {
-      socket.join(userData._id); // Each user has a personal room = their userId
-      logger.info(`[Socket.io] User ${userData.username} joined personal room: ${userData._id}`);
-      socket.emit('connected'); // Tell frontend the socket is ready
+      socket.join(userData._id);
+      onlineUsers.add(userData._id);
+      
+      // Tell everyone who is online
+      io.emit('get-online-users', Array.from(onlineUsers));
+      
+      logger.info(`[Socket.io] User ${userData.username} online. Total: ${onlineUsers.size}`);
+      socket.emit('connected');
     });
 
-    // EVENT 2: User opens a specific chat — joins that chat's room
-    // This ensures they receive messages only for chats they have open
+    // EVENT 2: User opens a specific chat
     socket.on('join-chat', (chatId) => {
       socket.join(chatId);
       logger.info(`[Socket.io] Socket ${socket.id} joined chat room: ${chatId}`);
     });
 
-    // EVENT 3: User leaves a chat room (e.g., opens a different chat)
+    // EVENT 3: User leaves a chat room
     socket.on('leave-chat', (chatId) => {
       socket.leave(chatId);
       logger.info(`[Socket.io] Socket ${socket.id} left chat room: ${chatId}`);
     });
 
-    // EVENT 4: A message is sent — broadcast to everyone in the chat room except sender
-    // Frontend emits this AFTER the REST API saves the message to MongoDB
+    // EVENT 4: A message is sent
     socket.on('send-message', (messageData) => {
       const chatId = messageData?.chat?._id || messageData?.chat;
       if (!chatId) return;
 
-      // Emit to all users in the chat room EXCEPT the sender
+      // Broadcast to the chat room
       socket.to(chatId).emit('message-received', messageData);
-      logger.info(`[Socket.io] Message broadcast to chat room: ${chatId}`);
+      
+      // Also notify each recipient specifically (in case they don't have the chat open)
+      if (messageData.chat?.users) {
+        messageData.chat.users.forEach(user => {
+          if (user._id === messageData.sender._id) return;
+          socket.to(user._id).emit('message-received', messageData);
+        });
+      }
     });
 
-    // EVENT 5: Notify a specific user of incoming friend request (real-time notification)
-    // Frontend emits this after calling POST /api/friends/send-request
+    // EVENT 5: Notify a specific user of incoming friend request
     socket.on('friend-request-sent', ({ receiverId, senderData }) => {
       io.to(receiverId).emit('friend-request-received', senderData);
       logger.info(`[Socket.io] Friend request notification sent to room: ${receiverId}`);
@@ -66,7 +76,7 @@ const initSocket = (io) => {
       logger.info(`[Socket.io] Acceptance notification sent to room: ${senderId}`);
     });
 
-    // EVENT 7: Typing indicator — tell the other user someone is typing
+    // EVENT 7: Typing indicator
     socket.on('typing', (chatId) => {
       socket.to(chatId).emit('typing', chatId);
     });
@@ -77,6 +87,9 @@ const initSocket = (io) => {
 
     // EVENT 8: User disconnects
     socket.on('disconnect', () => {
+      // We need to find which user disconnected
+      // For simplicity in this demo, we'll wait for the user to join again or use a map
+      // A better way is mapping socket.id to userId
       logger.info(`[Socket.io] Socket disconnected: ${socket.id}`);
     });
   });

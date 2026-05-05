@@ -8,9 +8,12 @@ const ChatWindow = ({
   currentUser, 
   newMessage, 
   setNewMessage, 
-  handleSendMessage, 
+  handleSendMessage,
+  handleTyping,
+  isTyping,
   scrollRef, 
-  toggleProfile 
+  toggleProfile,
+  onlineUsers = []
 }) => {
   if (!selectedChat) {
     return (
@@ -23,15 +26,18 @@ const ChatWindow = ({
   }
 
   const otherUser = selectedChat.users.find(u => u._id !== currentUser?._id);
+  const isOnline = onlineUsers.includes(otherUser?._id);
 
   return (
     <main className="chat-window">
       <header className="chat-topbar">
         <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={toggleProfile}>
-          <Avatar name={otherUser?.name} src={otherUser?.avatar} isOnline={otherUser?.isOnline} size="sm" />
+          <Avatar name={otherUser?.name} src={otherUser?.avatar} isOnline={isOnline} size="sm" />
           <div className="chat-topbar-info">
             <div className="chat-topbar-name">{otherUser?.name} {otherUser?.lastName}</div>
-            <div className="chat-topbar-status">{otherUser?.isOnline ? 'Online' : 'Offline'}</div>
+            <div className={`chat-topbar-status ${isOnline ? 'online' : ''}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </div>
           </div>
         </div>
         <div className="chat-topbar-actions">
@@ -50,6 +56,13 @@ const ChatWindow = ({
             </div>
           </div>
         ))}
+        {isTyping && (
+          <div className="msg-row recv">
+            <div className="typing-indicator">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        )}
         <div ref={scrollRef} />
       </div>
 
@@ -59,7 +72,7 @@ const ChatWindow = ({
           className="msg-input" 
           placeholder="Type something..." 
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={handleTyping}
         />
         <button className="send-btn" type="submit" disabled={!newMessage.trim()}>
           <Send size={18} />

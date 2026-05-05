@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { User as UserIcon } from 'lucide-react';
 
 const Avatar = ({ 
@@ -32,17 +33,23 @@ const Avatar = ({
     return colors[Math.abs(hash) % colors.length];
   };
 
-  const initials = getInitials(name, name); // Using name for both as a test, but let's check what we receive
+  const initials = getInitials(name, name);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div className={`avatar-wrap ${className}`}>
-      <div className={`avatar ${size === 'sm' ? 'sm' : ''}`} style={{ 
-        background: src ? 'transparent' : getBgColor(name || 'User'),
+      <div className={`avatar ${size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : ''}`} style={{ 
+        background: (src && !imgError) ? 'transparent' : getBgColor(name || 'User'),
         display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700',
         textShadow: '0 1px 2px rgba(0,0,0,0.2)'
       }}>
-        {src ? (
-          <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {src && !imgError ? (
+          <img 
+            src={src} 
+            alt={name} 
+            onError={() => setImgError(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+          />
         ) : (
           <span style={{ transform: 'translateY(-1px)' }}>{initials}</span>
         )}

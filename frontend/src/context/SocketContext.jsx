@@ -21,6 +21,10 @@ export const SocketProvider = ({ children }) => {
         setSocket(newSocket);
 
         newSocket.emit('setup', user);
+        newSocket.on('get-online-users', (users) => {
+          setOnlineUsers(users);
+        });
+
         newSocket.on('connected', () => console.log('[Socket] Connected to backend'));
 
         return () => newSocket.close();

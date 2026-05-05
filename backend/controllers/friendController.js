@@ -117,7 +117,8 @@ const acceptFriendRequest = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Friend request accepted! You are now friends.',
-      chatId: chat._id
+      chatId: chat._id,
+      senderId: request.sender
     });
 
   } catch (error) {
