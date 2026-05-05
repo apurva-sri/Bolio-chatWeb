@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { ChevronRight, Check, User, Mail, Lock, Calendar, Globe, UserCheck, Shield } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import * as api from '../services/api';
 import './Register.css';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,8 +46,8 @@ const Register = () => {
     setError('');
     
     try {
-      const response = await axios.post('/api/auth/register', formData);
-      if (response.data.success) {
+      const { data } = await api.registerUser(formData);
+      if (data.success) {
         setStep(3);
       }
     } catch (err) {
@@ -63,12 +65,18 @@ const Register = () => {
     setError('');
     
     try {
-      const response = await axios.post('/api/auth/verify-otp', {
+      const { data } = await api.verifyOtp({
         email: formData.email,
         otp: formData.otp
       });
-      if (response.data.success) {
-        navigate('/login');
+      if (data.success) {
+        // If your backend returns tokens after OTP, login directly
+        if (data.accessToken) {
+          login(data);
+          navigate('/chat');
+        } else {
+          navigate('/login');
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired OTP');
