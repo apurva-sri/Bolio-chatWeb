@@ -35,6 +35,7 @@ const Chat = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [firstUnreadId, setFirstUnreadId] = useState(null);
 
   const scrollRef = useRef();
 
@@ -200,11 +201,21 @@ const Chat = () => {
     setShowProfile(false);
     setPage(1);
     setHasMore(true);
+    setFirstUnreadId(null);
     try {
       const { data } = await api.getMessages(chat._id, 1);
+      
+      // Identify first unread message for the divider
+      const unread = [...data.messages].reverse().find(m => !m.readBy.includes(user._id));
+      if (unread) setFirstUnreadId(unread._id);
+
       // Reverse because backend sends newest first, but we want to render top-to-bottom
       setMessages([...data.messages].reverse());
       socket?.emit('join-chat', chat._id);
+      
+      // Mark as read
+      await api.markAsRead(chat._id);
+      fetchChats(); // Refresh sidebar counts
     } catch (err) { console.error(err); }
   };
 
@@ -337,6 +348,7 @@ const Chat = () => {
         onLoadMore={fetchMoreMessages}
         hasMore={hasMore}
         loadingMore={loadingMore}
+        firstUnreadId={firstUnreadId}
       />
 
       <ProfilePanel 

@@ -149,9 +149,21 @@ const ChatSidebar = ({
                   }}
                 >
                   <Avatar name={otherUser?.name} src={otherUser?.avatar} isOnline={isOnline} />
-                  <div className="chat-item-info" style={{ marginLeft: '12px', flex: 1 }}>
-                    <div className="chat-item-name" style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>{otherUser?.name}</div>
-                    <div className="chat-item-preview" style={{ fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.7 }}>{chat.latestMessage?.content || 'New conversation'}</div>
+                  <div className="chat-item-info" style={{ marginLeft: '12px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="chat-item-name" style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>{otherUser?.name}</div>
+                      {chat.unreadCount > 0 && (
+                        <div className="unread-badge" style={{ 
+                          background: 'var(--accent)', color: '#fff', fontSize: '10px', 
+                          fontWeight: '800', minWidth: '18px', height: '18px', 
+                          borderRadius: '10px', display: 'flex', alignItems: 'center', 
+                          justifyContent: 'center', padding: '0 5px'
+                        }}>
+                          {chat.unreadCount}
+                        </div>
+                      )}
+                    </div>
+                    <div className="chat-item-preview" style={{ fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.latestMessage?.content || 'New conversation'}</div>
                   </div>
                 </div>
               );

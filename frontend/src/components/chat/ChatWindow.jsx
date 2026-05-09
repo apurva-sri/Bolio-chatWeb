@@ -16,7 +16,8 @@ const ChatWindow = ({
   onlineUsers = [],
   onLoadMore,
   hasMore,
-  loadingMore
+  loadingMore,
+  firstUnreadId
 }) => {
   const containerRef = React.useRef();
 
@@ -36,6 +37,51 @@ const ChatWindow = ({
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, loadingMore]);
+
+  const formatDateLabel = (dateStr) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    
+    return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  const renderMessages = () => {
+    let lastDate = null;
+    
+    return messages.map((msg, i) => {
+      const msgDate = new Date(msg.createdAt).toDateString();
+      const showDivider = msgDate !== lastDate;
+      lastDate = msgDate;
+      
+      const isUnreadStart = msg._id === firstUnreadId;
+      
+      return (
+        <React.Fragment key={msg._id || i}>
+          {showDivider && (
+            <div className="date-divider">
+              <span>{formatDateLabel(msg.createdAt)}</span>
+            </div>
+          )}
+          {isUnreadStart && (
+            <div className="date-divider unread-divider" style={{ color: 'var(--danger)' }}>
+              <span style={{ background: 'var(--danger)', color: '#fff', padding: '2px 10px', borderRadius: '99px' }}>Unread Messages</span>
+            </div>
+          )}
+          <div className={`msg-row ${msg.sender._id === currentUser?._id ? 'sent' : 'recv'}`}>
+            <div className="msg-bubble">{msg.content}</div>
+            <div className="msg-time">
+              {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </div>
+          </div>
+        </React.Fragment>
+      );
+    });
+  };
 
   if (!selectedChat) {
     return (
@@ -80,14 +126,7 @@ const ChatWindow = ({
             <div className="loading-spin" style={{ margin: '0 auto', width: '16px', height: '16px' }} />
           </div>
         )}
-        {messages.map((msg, i) => (
-          <div key={msg._id || i} className={`msg-row ${msg.sender._id === currentUser?._id ? 'sent' : 'recv'}`}>
-            <div className="msg-bubble">{msg.content}</div>
-            <div className="msg-time">
-              {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-            </div>
-          </div>
-        ))}
+        {renderMessages()}
         {isTyping && (
           <div className="msg-row recv">
             <div className="typing-indicator">

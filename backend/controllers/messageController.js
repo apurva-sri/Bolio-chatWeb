@@ -7,13 +7,6 @@ const logger = require('../config/logger');
  * @route POST /api/messages/send
  * @access Private
  * body: { chatId, content, messageType ('text'|'image'|'file'), fileUrl }
- *
- * FLOW:
- * 1. Verify the chat exists and the sender is a participant
- * 2. Create the Message document in MongoDB
- * 3. Update the chat's latestMessage field (for sidebar preview)
- * 4. Return the fully populated message to the controller
- *    (Socket.io will then broadcast it to the other user in real-time)
  */
 const sendMessage = async (req, res) => {
   try {
@@ -47,15 +40,17 @@ const sendMessage = async (req, res) => {
       content: content || '',
       messageType,
       fileUrl: fileUrl || null,
+      readBy: [senderId], 
     });
 
-    // Update the chat's latestMessage so the sidebar shows the last message preview
     await Chat.findByIdAndUpdate(chatId, { latestMessage: message._id });
 
-    // Populate sender details before returning
     const populatedMessage = await Message.findById(message._id)
       .populate('sender', 'name username avatar')
-      .populate('chat');
+      .populate({
+        path: 'chat',
+        populate: { path: 'users', select: 'name username avatar' }
+      });
 
     logger.success(`[Send Message API] Message sent successfully by ${req.user.username} in chat ${chatId}`);
 
@@ -115,4 +110,21 @@ const getMessages = async (req, res) => {
   }
 };
 
-module.exports = { sendMessage, getMessages };
+const markAsRead = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user._id;
+
+    await Message.updateMany(
+      { chat: chatId, readBy: { $ne: userId } },
+      { $addToSet: { readBy: userId } }
+    );
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error(`[Mark As Read API] Error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+module.exports = { sendMessage, getMessages, markAsRead };

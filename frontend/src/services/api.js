@@ -63,6 +63,7 @@ export const getAllChats  = ()         => api.get('/chats');
 // ─── MESSAGES ───
 export const sendMessage = (chatId, content) => api.post('/messages/send', { chatId, content });
 export const getMessages = (chatId, page = 1) => api.get(`/messages/${chatId}?page=${page}`);
+export const markAsRead = (chatId) => api.put(`/messages/${chatId}/read`);
 
 // ─── Productivity (Notes & Reminders) ───
 export const getNotes = () => api.get('/productivity/notes');

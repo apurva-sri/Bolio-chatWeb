@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const Chat = require('../models/Chat');
 const User = require('../models/User');
+const Message = require('../models/Message');
 const logger = require('../config/logger');
 
 /**
@@ -7,7 +9,7 @@ const logger = require('../config/logger');
  * @route POST /api/chats/access
  * @access Private
  * body: { friendId }
-*/
+ */
 const accessChat = async (req, res) => {
   try {
     const { friendId, userId } = req.body;
@@ -70,26 +72,40 @@ const accessChat = async (req, res) => {
 };
 
 /**
- * @desc  Get all chats for the logged-in user (for sidebar list)
+ * @desc  Get all chats for the logged-in user (with unread counts)
  * @route GET /api/chats
  * @access Private
  */
 const getAllChats = async (req, res) => {
   try {
+    const userId = req.user._id;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
     logger.info(`[Get All Chats API] Fetching chats for ${req.user.username}`);
 
-    // Find all chats the current user is part of, sorted by latest activity
-    const chats = await Chat.find({ users: { $in: [req.user._id] } })
+    const chats = await Chat.find({ users: { $in: [userId] } })
       .populate('users', 'name lastName username avatar isOnline lastSeen')
       .populate({
         path: 'latestMessage',
         populate: { path: 'sender', select: 'name username avatar' },
       })
-      .sort({ updatedAt: -1 }); // Most recently active chat first
+      .sort({ updatedAt: -1 });
 
-    logger.info(`[Get All Chats API] Found ${chats.length} chat(s) for ${req.user.username}`);
+    // Attach unread counts
+    const chatsWithUnread = await Promise.all(
+      chats.map(async (chat) => {
+        const unreadCount = await Message.countDocuments({
+          chat: chat._id,
+          sender: { $ne: userObjectId },
+          readBy: { $nin: [userObjectId] },
+        });
+        return { ...chat._doc, unreadCount };
+      })
+    );
 
-    res.status(200).json({ success: true, chats });
+    logger.info(`[Get All Chats API] Found ${chatsWithUnread.length} chat(s) for ${req.user.username}`);
+
+    res.status(200).json({ success: true, chats: chatsWithUnread });
 
   } catch (error) {
     logger.error(`[Get All Chats API] Error: ${error.message}`);
