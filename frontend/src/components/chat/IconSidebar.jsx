@@ -1,10 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Users, Calendar, User, Settings, FileText, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const IconSidebar = ({ activePanel, setActivePanel, hasNotifications }) => {
   const { logout } = useAuth();
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const settingsRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setShowSettingsDropdown(false);
+      }
+    };
+
+    if (showSettingsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSettingsDropdown]);
 
   const navItems = [
     { id: 'chats', icon: MessageSquare, label: 'Messages' },
@@ -42,7 +61,7 @@ const IconSidebar = ({ activePanel, setActivePanel, hasNotifications }) => {
           <User size={22} />
         </button>
 
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} ref={settingsRef}>
           <button 
             className={`icon-btn ${activePanel === 'settings' ? 'active' : ''}`} 
             onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}

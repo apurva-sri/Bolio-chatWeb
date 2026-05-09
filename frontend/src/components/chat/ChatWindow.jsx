@@ -13,8 +13,30 @@ const ChatWindow = ({
   isTyping,
   scrollRef, 
   toggleProfile,
-  onlineUsers = []
+  onlineUsers = [],
+  onLoadMore,
+  hasMore,
+  loadingMore
 }) => {
+  const containerRef = React.useRef();
+
+  // Handle scroll to load more
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    const { scrollTop } = containerRef.current;
+    
+    if (scrollTop === 0 && hasMore && !loadingMore) {
+      onLoadMore();
+    }
+  };
+
+  // Scroll to bottom on first load and new messages
+  React.useEffect(() => {
+    if (scrollRef.current && !loadingMore) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, loadingMore]);
+
   if (!selectedChat) {
     return (
       <div className="empty-state">
@@ -47,7 +69,17 @@ const ChatWindow = ({
         </div>
       </header>
 
-      <div className="messages-area">
+      <div 
+        className="messages-area" 
+        ref={containerRef} 
+        onScroll={handleScroll}
+        style={{ display: 'flex', flexDirection: 'column' }}
+      >
+        {loadingMore && (
+          <div className="text-center py-2">
+            <div className="loading-spin" style={{ margin: '0 auto', width: '16px', height: '16px' }} />
+          </div>
+        )}
         {messages.map((msg, i) => (
           <div key={msg._id || i} className={`msg-row ${msg.sender._id === currentUser?._id ? 'sent' : 'recv'}`}>
             <div className="msg-bubble">{msg.content}</div>

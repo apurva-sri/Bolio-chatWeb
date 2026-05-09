@@ -89,10 +89,9 @@ const getMessages = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Chat not found or access denied' });
     }
 
-    // Fetch messages oldest-first (for chat view), with pagination
     const messages = await Message.find({ chat: chatId })
       .populate('sender', 'name username avatar')
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 

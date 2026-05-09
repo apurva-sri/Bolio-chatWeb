@@ -4,13 +4,14 @@ const Button = ({
   children, 
   variant = 'primary', 
   size = 'md', 
+  fullWidth = false,
   className = '', 
   icon: Icon,
   loading = false,
   disabled = false,
   ...props 
 }) => {
-  const baseStyles = "btn-base flex items-center justify-center gap-2 font-semibold transition-all duration-200 active:scale-95";
+  const baseStyles = `btn-base flex items-center justify-center gap-2 font-semibold transition-all duration-200 active:scale-95 ${fullWidth ? 'w-full' : ''}`;
   
   const variants = {
     primary: "btn-primary",
@@ -22,7 +23,7 @@ const Button = ({
 
   return (
     <button
-      className={`${variants[variant]} ${className}`}
+      className={`${baseStyles} ${variants[variant]} ${className}`}
       disabled={disabled || loading}
       {...props}
     >

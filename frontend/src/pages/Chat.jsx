@@ -30,6 +30,11 @@ const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const scrollRef = useRef();
 
@@ -193,11 +198,36 @@ const Chat = () => {
   const selectChat = async (chat) => {
     setSelectedChat(chat);
     setShowProfile(false);
+    setPage(1);
+    setHasMore(true);
     try {
-      const { data } = await api.getMessages(chat._id);
-      setMessages(data.messages);
+      const { data } = await api.getMessages(chat._id, 1);
+      // Reverse because backend sends newest first, but we want to render top-to-bottom
+      setMessages([...data.messages].reverse());
       socket?.emit('join-chat', chat._id);
     } catch (err) { console.error(err); }
+  };
+
+  const fetchMoreMessages = async () => {
+    if (!hasMore || loadingMore || !selectedChat) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const { data } = await api.getMessages(selectedChat._id, nextPage);
+      
+      if (data.messages && data.messages.length > 0) {
+        // Reverse newest-first data and prepend to current messages
+        const olderMessages = [...data.messages].reverse();
+        setMessages(prev => [...olderMessages, ...prev]);
+        setPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error fetching more:", err);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const startChatWithFriend = async (friendId) => {
@@ -304,6 +334,9 @@ const Chat = () => {
         scrollRef={scrollRef}
         toggleProfile={() => setShowProfile(!showProfile)}
         onlineUsers={onlineUsers}
+        onLoadMore={fetchMoreMessages}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
       />
 
       <ProfilePanel 
