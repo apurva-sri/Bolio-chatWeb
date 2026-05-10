@@ -85,6 +85,27 @@ const initSocket = (io) => {
       socket.to(chatId).emit('stop-typing', chatId);
     });
 
+    // --- CALLING EVENTS (Signaling) ---
+    socket.on('call-user', ({ to, offer, from, name, callType }) => {
+      io.to(to).emit('incoming-call', { from, offer, name, callType });
+    });
+
+    socket.on('answer-call', ({ to, answer }) => {
+      io.to(to).emit('call-accepted', { answer });
+    });
+
+    socket.on('reject-call', ({ to }) => {
+      io.to(to).emit('call-rejected');
+    });
+
+    socket.on('ice-candidate', ({ to, candidate }) => {
+      io.to(to).emit('ice-candidate', { candidate });
+    });
+
+    socket.on('end-call', ({ to }) => {
+      io.to(to).emit('call-ended');
+    });
+
     // EVENT 8: User disconnects
     socket.on('disconnect', () => {
       // We need to find which user disconnected

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Send, Phone, Video, Info, MessageSquare } from 'lucide-react';
 import Avatar from '../ui/Avatar';
+import { useCall } from '../../context/CallContext';
 
 const ChatWindow = ({ 
   selectedChat, 
@@ -20,6 +21,7 @@ const ChatWindow = ({
   firstUnreadId
 }) => {
   const containerRef = React.useRef();
+  const { initiateCall } = useCall();
 
   // Handle scroll to load more
   const handleScroll = () => {
@@ -109,8 +111,8 @@ const ChatWindow = ({
           </div>
         </div>
         <div className="chat-topbar-actions">
-          <button className="topbar-btn"><Phone size={18} /></button>
-          <button className="topbar-btn"><Video size={18} /></button>
+          <button className="topbar-btn" onClick={() => initiateCall(otherUser, 'audio')}><Phone size={18} /></button>
+          <button className="topbar-btn" onClick={() => initiateCall(otherUser, 'video')}><Video size={18} /></button>
           <button className="topbar-btn" onClick={toggleProfile}><Info size={18} /></button>
         </div>
       </header>

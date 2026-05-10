@@ -5,8 +5,9 @@ import Chat from './pages/Chat';
 import Login from './pages/Login';
 import { SocketProvider } from './context/SocketContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CallProvider } from './context/CallContext';
+import CallOverlay from './components/chat/CallOverlay';
 import { Sun, Moon } from 'lucide-react';
-import './index.css';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -28,33 +29,36 @@ function App() {
   return (
     <AuthProvider>
       <SocketProvider>
-        <Router>
-          <div className="app-container">
-            <button 
-              onClick={toggleTheme} 
-              className="theme-toggle-btn"
-              style={{
-                position: 'fixed', top: '16px', right: '16px', zIndex: 1000,
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                color: 'var(--text-primary)', padding: '10px', borderRadius: '50%',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
-            >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+        <CallProvider>
+          <Router>
+            <div className="app-container">
+              <CallOverlay />
+              <button 
+                onClick={toggleTheme} 
+                className="theme-toggle-btn"
+                style={{
+                  position: 'fixed', top: '16px', right: '16px', zIndex: 1000,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  color: 'var(--text-primary)', padding: '10px', borderRadius: '50%',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
 
-            <Routes>
-              <Route path="/" element={<Navigate to="/chat" replace />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/chat" element={
-                <PrivateRoute>
-                  <Chat />
-                </PrivateRoute>
-              } />
-            </Routes>
-          </div>
-        </Router>
+              <Routes>
+                <Route path="/" element={<Navigate to="/chat" replace />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/chat" element={
+                  <PrivateRoute>
+                    <Chat />
+                  </PrivateRoute>
+                } />
+              </Routes>
+            </div>
+          </Router>
+        </CallProvider>
       </SocketProvider>
     </AuthProvider>
   );
