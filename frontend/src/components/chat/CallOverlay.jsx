@@ -13,11 +13,35 @@ const CallOverlay = () => {
     rejectCall, 
     endCall, 
     remoteStream, 
-    localStream 
+    localStream,
+    isMuted,
+    isCameraOff,
+    toggleMic,
+    toggleCamera
   } = useCall();
 
+  const [callTime, setCallTime] = React.useState(0);
   const remoteVideoRef = useRef();
   const localVideoRef = useRef();
+
+  // Timer logic
+  React.useEffect(() => {
+    let interval;
+    if (callStatus === 'active') {
+      interval = setInterval(() => {
+        setCallTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      setCallTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [callStatus]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (remoteStream && remoteVideoRef.current) {
@@ -35,71 +59,93 @@ const CallOverlay = () => {
 
   return (
     <div className="call-overlay">
-      <div className="call-card">
-        {/* Calling / Incoming View */}
-        {(callStatus === 'calling' || callStatus === 'incoming') && (
-          <>
-            <div className={`call-avatar-container ${callStatus === 'calling' ? 'pulse-animation' : ''}`}>
-               <Avatar 
-                size="xl" 
-                name={callStatus === 'calling' ? remoteUser?.name : incomingCall?.name} 
-                src={callStatus === 'calling' ? remoteUser?.avatar : null}
-               />
-            </div>
-            <h2 className="call-name">
-              {callStatus === 'calling' ? remoteUser?.name : incomingCall?.name}
-            </h2>
-            <p className="call-status">
-              {callStatus === 'calling' ? 'Calling...' : `Incoming ${callType} call`}
-            </p>
+      {/* ─── INCOMING / CALLING VIEW ─── */}
+      {(callStatus === 'calling' || callStatus === 'incoming') && (
+        <div className="incoming-card">
+          <div className="incoming-avatar-wrap">
+            <Avatar 
+              size="xl" 
+              name={callStatus === 'calling' ? remoteUser?.name : incomingCall?.name} 
+              src={callStatus === 'calling' ? remoteUser?.avatar : null}
+            />
+          </div>
+          <h2 className="incoming-name">
+            {callStatus === 'calling' ? remoteUser?.name : incomingCall?.name}
+          </h2>
+          <p className="incoming-type">
+            {callStatus === 'calling' ? 'Outgoing Call' : `Incoming ${callType} Call`}
+          </p>
 
-            <div className="call-actions">
-              {callStatus === 'incoming' ? (
-                <>
-                  <button className="call-btn accept" onClick={acceptCall}>
-                    <Phone size={24} />
-                  </button>
-                  <button className="call-btn reject" onClick={rejectCall}>
-                    <PhoneOff size={24} />
-                  </button>
-                </>
-              ) : (
-                <button className="call-btn reject" onClick={endCall}>
-                  <PhoneOff size={24} />
+          <div className="flex gap-8 mt-4">
+            {callStatus === 'incoming' ? (
+              <>
+                <button className="control-action-btn accept-btn-premium" onClick={acceptCall}>
+                  <Phone size={28} />
                 </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Active Call View */}
-        {callStatus === 'active' && (
-          <div className="active-call-container">
-            {callType === 'video' ? (
-              <div className="video-grid">
-                <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
-                <video ref={localVideoRef} autoPlay playsInline muted className="local-video-pip" />
-              </div>
+                <button className="control-action-btn reject-btn-premium" onClick={rejectCall}>
+                  <PhoneOff size={28} />
+                </button>
+              </>
             ) : (
-              <div className="audio-call-ui">
-                <Avatar size="xl" name={remoteUser?.name || incomingCall?.name} />
-                <h2 className="call-name">{remoteUser?.name || incomingCall?.name}</h2>
-                <p className="call-status">On call...</p>
-              </div>
-            )}
-
-            <div className="call-controls-floating">
-              <button className="control-btn"><Mic size={20} /></button>
-              {callType === 'video' && <button className="control-btn"><Video size={20} /></button>}
-              <button className="call-btn end" onClick={endCall}>
+              <button className="control-action-btn reject-btn-premium" onClick={endCall}>
                 <PhoneOff size={28} />
               </button>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ─── ACTIVE CALL VIEW ─── */}
+      {callStatus === 'active' && (
+        <div className="w-full h-full relative">
+          {callType === 'video' ? (
+            <div className="active-video-container">
+              <video ref={remoteVideoRef} autoPlay playsInline className="main-video" />
+              {!isCameraOff && <video ref={localVideoRef} autoPlay playsInline muted className="local-video-pip" />}
+            </div>
+          ) : (
+            <div className="audio-call-wrap">
+              <div className="incoming-avatar-wrap">
+                <Avatar size="xl" name={remoteUser?.name || incomingCall?.name} />
+              </div>
+              <h2 className="incoming-name" style={{ color: '#fff' }}>{remoteUser?.name || incomingCall?.name}</h2>
+              <p className="timer" style={{ marginTop: '10px' }}>{formatTime(callTime)}</p>
+            </div>
+          )}
+
+          {/* Top Info Bar */}
+          <div className="call-info-overlay">
+            <Avatar size="sm" name={remoteUser?.name || incomingCall?.name} />
+            <span style={{ fontWeight: 600 }}>{remoteUser?.name || incomingCall?.name}</span>
+            <div className="timer">{formatTime(callTime)}</div>
+          </div>
+
+          {/* Floating Controls */}
+          <div className="controls-bar">
+            <button 
+              className={`control-action-btn ${isMuted ? 'active-red' : ''}`} 
+              onClick={toggleMic}
+            >
+              {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+            </button>
+            
+            {callType === 'video' && (
+              <button 
+                className={`control-action-btn ${isCameraOff ? 'active-red' : ''}`} 
+                onClick={toggleCamera}
+              >
+                {isCameraOff ? <VideoOff size={22} /> : <Video size={22} />}
+              </button>
+            )}
+
+            <button className="control-action-btn danger" onClick={endCall}>
+              <PhoneOff size={24} />
+            </button>
+          </div>
+        </div>
+      )}
       
-      {/* Hidden audio element for audio-only calls to ensure sound output */}
+      {/* Fallback audio element */}
       <audio ref={remoteVideoRef} autoPlay style={{ display: 'none' }} />
     </div>
   );

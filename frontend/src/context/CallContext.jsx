@@ -14,11 +14,48 @@ export const CallProvider = ({ children }) => {
   const [callType, setCallType] = useState('audio');
   const [remoteUser, setRemoteUser] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
 
   const localStreamRef = useRef();
   const remoteStreamRef = useRef();
   const peerConnectionRef = useRef();
 
+  const toggleMic = () => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
+      }
+    }
+  };
+
+  const toggleCamera = () => {
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCameraOff(!videoTrack.enabled);
+      }
+    }
+  };
+
+  const resetCallState = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    setCallStatus('idle');
+    setRemoteUser(null);
+    setIncomingCall(null);
+    setIsMuted(false);
+    setIsCameraOff(false);
+  };
   const iceConfiguration = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   };
@@ -65,20 +102,6 @@ export const CallProvider = ({ children }) => {
       socket.off('call-ended');
     };
   }, [socket]);
-
-  const resetCallState = () => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-      localStreamRef.current = null;
-    }
-    setCallStatus('idle');
-    setRemoteUser(null);
-    setIncomingCall(null);
-  };
 
   const initiateCall = async (targetUser, type = 'audio') => {
     setRemoteUser(targetUser);
@@ -185,6 +208,10 @@ export const CallProvider = ({ children }) => {
       incomingCall,
       localStream: localStreamRef.current,
       remoteStream: remoteStreamRef.current,
+      isMuted,
+      isCameraOff,
+      toggleMic,
+      toggleCamera,
       initiateCall,
       acceptCall,
       rejectCall,
