@@ -110,6 +110,34 @@ const getMessages = async (req, res) => {
   }
 };
 
+/**
+ * @desc  Upload a file and return the URL
+ * @route POST /api/messages/upload
+ * @access Private
+ */
+const uploadFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({ 
+      fileUrl, 
+      originalName: req.file.originalname,
+      mimetype: req.file.mimetype 
+    });
+  } catch (error) {
+    logger.error(`[Message Controller] Upload Error: ${error.message}`);
+    res.status(500).json({ message: 'Upload failed' });
+  }
+};
+
+/**
+ * @desc  Mark all messages in a chat as read
+ * @route PUT /api/messages/:chatId/read
+ * @access Private
+ */
 const markAsRead = async (req, res) => {
   try {
     const { chatId } = req.params;
@@ -120,11 +148,11 @@ const markAsRead = async (req, res) => {
       { $addToSet: { readBy: userId } }
     );
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ message: 'Messages marked as read' });
   } catch (error) {
-    logger.error(`[Mark As Read API] Error: ${error.message}`);
-    res.status(500).json({ success: false, message: 'Server error' });
+    logger.error(`[Message Controller] MarkRead Error: ${error.message}`);
+    res.status(500).json({ message: 'Server Error' });
   }
 };
 
-module.exports = { sendMessage, getMessages, markAsRead };
+module.exports = { sendMessage, getMessages, uploadFile, markAsRead };

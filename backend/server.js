@@ -17,10 +17,19 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const path = require('path');
+const fs = require('fs');
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(uploadDir));
 
 // Routes
 app.use('/api/auth',    authRoutes);

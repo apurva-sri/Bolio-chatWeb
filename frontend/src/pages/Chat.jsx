@@ -252,17 +252,27 @@ const Chat = () => {
     } catch (err) { console.error(err); }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedChat) return;
+  const handleSendMessage = async (e, type = 'text', url = null) => {
+    if (e) e.preventDefault();
+    if (!newMessage.trim() && !url) return;
 
     try {
-      const { data } = await api.sendMessage(selectedChat._id, newMessage);
-      socket?.emit('send-message', data.message);
-      setMessages(prev => [...prev, data.message]);
+      const { data } = await api.sendMessage(
+        selectedChat._id, 
+        url ? (type === 'image' ? '' : 'Document') : newMessage,
+        type,
+        url
+      );
+
+      socket.emit('send-message', data);
+      setMessages([...messages, data]);
       setNewMessage('');
-      fetchChats();
-    } catch (err) { console.error(err); }
+      
+      // Update the chat list in sidebar
+      setChats(prev => prev.map(c => c._id === selectedChat._id ? { ...c, latestMessage: data } : c));
+    } catch (err) {
+      console.error('Error sending message:', err);
+    }
   };
 
   const sendRequest = async (userId) => {

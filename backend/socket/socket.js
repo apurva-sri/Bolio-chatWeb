@@ -17,6 +17,7 @@ const initSocket = (io) => {
 
   const onlineUsers = new Set();
   const userSocketMap = new Map(); // socket.id -> userId
+  const activeCalls = new Map();   // userId -> peerUserId (To track who is calling whom)
 
   io.on('connection', (socket) => {
     logger.success(`[Socket.io] New connection: ${socket.id}`);
@@ -78,6 +79,10 @@ const initSocket = (io) => {
 
     // --- CALLING EVENTS (Signaling) ---
     socket.on('call-user', ({ to, offer, from, name, callType }) => {
+      // Store the call mapping so we can clean up if one person disconnects
+      activeCalls.set(from, to);
+      activeCalls.set(to, from);
+      
       io.to(to).emit('incoming-call', { from, offer, name, callType });
     });
 
@@ -86,6 +91,10 @@ const initSocket = (io) => {
     });
 
     socket.on('reject-call', ({ to }) => {
+      activeCalls.delete(to);
+      const myId = userSocketMap.get(socket.id);
+      if (myId) activeCalls.delete(myId);
+
       io.to(to).emit('call-rejected');
     });
 
@@ -94,11 +103,23 @@ const initSocket = (io) => {
     });
 
     socket.on('end-call', ({ to }) => {
+      activeCalls.delete(to);
+      const myId = userSocketMap.get(socket.id);
+      if (myId) activeCalls.delete(myId);
+
       io.to(to).emit('call-ended');
     });
     socket.on('disconnect', () => {
       const userId = userSocketMap.get(socket.id);
       if (userId) {
+        // If the user was in a call, notify the peer!
+        const peerId = activeCalls.get(userId);
+        if (peerId) {
+          io.to(peerId).emit('call-ended');
+          activeCalls.delete(userId);
+          activeCalls.delete(peerId);
+        }
+
         onlineUsers.delete(userId);
         userSocketMap.delete(socket.id);
         

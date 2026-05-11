@@ -61,9 +61,15 @@ export const accessChat  = (userId) => api.post('/chats', { userId });
 export const getAllChats  = ()         => api.get('/chats');
 
 // ─── MESSAGES ───
-export const sendMessage = (chatId, content) => api.post('/messages/send', { chatId, content });
+export const sendMessage = (chatId, content, messageType = 'text', fileUrl = null) => 
+  api.post('/messages/send', { chatId, content, messageType, fileUrl });
+
 export const getMessages = (chatId, page = 1) => api.get(`/messages/${chatId}?page=${page}`);
 export const markAsRead = (chatId) => api.put(`/messages/${chatId}/read`);
+
+export const uploadFile = (formData) => api.post('/messages/upload', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
 
 // ─── Productivity (Notes & Reminders) ───
 export const getNotes = () => api.get('/productivity/notes');
